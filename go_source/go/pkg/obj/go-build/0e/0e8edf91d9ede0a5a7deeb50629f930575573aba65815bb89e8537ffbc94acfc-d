@@ -1,0 +1,8 @@
+./base.go
+./bootstrap_false.go
+./debug.go
+./flag.go
+./link.go
+./mapfile_mmap.go
+./print.go
+./timings.go

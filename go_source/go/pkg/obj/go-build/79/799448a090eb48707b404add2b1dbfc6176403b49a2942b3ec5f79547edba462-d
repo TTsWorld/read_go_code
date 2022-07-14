@@ -1,0 +1,6 @@
+./at_darwin.go
+./at_sysnum_darwin.go
+./getentropy_darwin.go
+./net.go
+./nonblocking_libc.go
+./asm_darwin.s

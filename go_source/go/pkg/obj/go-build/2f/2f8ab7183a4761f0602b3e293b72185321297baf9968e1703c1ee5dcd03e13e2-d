@@ -1,0 +1,7 @@
+./compile.go
+./export.go
+./main.go
+./obj.go
+./pprof.go
+./trace.go
+./util.go
