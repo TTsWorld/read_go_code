@@ -6,10 +6,14 @@
 // Its primary job is to wrap existing implementations of such primitives,
 // such as those in package os, into shared public interfaces that
 // abstract the functionality, plus some other related primitives.
+// io 包提供了 I/O 原语的基本接口, 它的主要工作是包装这些原语的现有实现， 例如 os 包中的
+// 那些，放到共享的公共接口中抽象功能，再加上一些其他相关的原语。
 //
 // Because these interfaces and primitives wrap lower-level operations with
 // various implementations, unless otherwise informed clients should not
 // assume they are safe for parallel execution.
+// 因为这些接口和原语用各种实现包装的都是低层次的操作，除非经过确认，否则客户端不应该假定他们
+// 是并发安全的
 package io
 
 import (
@@ -18,20 +22,27 @@ import (
 )
 
 // Seek whence values.
+// seek 位置值
 const (
-	SeekStart   = 0 // seek relative to the origin of the file
+	SeekStart = 0 // seek relative to the origin of the file
+	// 从文件起点
 	SeekCurrent = 1 // seek relative to the current offset
-	SeekEnd     = 2 // seek relative to the end
+	// 从当前 offset
+	SeekEnd = 2 // seek relative to the end
+	// 文件末尾
 )
 
 // ErrShortWrite means that a write accepted fewer bytes than requested
 // but failed to return an explicit error.
+// ErrShortWrite 含义是一个写操作接收到的字节数比申请的要小，但未能返回一个明确错误
 var ErrShortWrite = errors.New("short write")
 
 // errInvalidWrite means that a write returned an impossible count.
+// errInvalidWrite 表示 写操作返回一个不可能的 计数
 var errInvalidWrite = errors.New("invalid write result")
 
 // ErrShortBuffer means that a read required a longer buffer than was provided.
+// ErrShortBuffer 表示读操作需要比提供的 buffer 更大的缓冲区
 var ErrShortBuffer = errors.New("short buffer")
 
 // EOF is the error returned by Read when no more input is available.
@@ -41,24 +52,32 @@ var ErrShortBuffer = errors.New("short buffer")
 // If the EOF occurs unexpectedly in a structured data stream,
 // the appropriate error is either ErrUnexpectedEOF or some other error
 // giving more detail.
+// 当没有更多的输入可用时，读操作返回一个 EOF 错误。函数应该只返回 EOF 来表示输入的优雅结束。
+// 如果 EOF 在一个结构化的数据流时意外出现，恰到的做法是提供ErrUnexpectedEOF 或其他更详细的信息
 var EOF = errors.New("EOF")
 
 // ErrUnexpectedEOF means that EOF was encountered in the
 // middle of reading a fixed-size block or data structure.
+// ErrUnexpectedEOF 的含义是在读取固定大小的块或数据结构的中间发生了 EOF 错误
 var ErrUnexpectedEOF = errors.New("unexpected EOF")
 
 // ErrNoProgress is returned by some clients of a Reader when
 // many calls to Read have failed to return any data or error,
 // usually the sign of a broken Reader implementation.
+// ErrNoProgress 在许多读操作无法返回任何数据或错误时由某些客户端返回，
+// 该错误通常表示一个损坏的 Reader 实现
 var ErrNoProgress = errors.New("multiple Read calls return no data or error")
 
 // Reader is the interface that wraps the basic Read method.
+// Reader 是一个封装了基本 Read 方法的接口
 //
 // Read reads up to len(p) bytes into p. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered. Even if Read
 // returns n < len(p), it may use all of p as scratch space during the call.
 // If some data is available but not len(p) bytes, Read conventionally
 // returns what is available instead of waiting for more.
+// Read 至多读取 len(p) 个自己到 p中。它返回读取的字节数和任何发生的 error。即使
+// 在 Read 返回的 n < len(p)，它将在调用时使用所有p 作为暂存空间
 //
 // When Read encounters an error or end-of-file condition after
 // successfully reading n > 0 bytes, it returns the number of
@@ -68,44 +87,64 @@ var ErrNoProgress = errors.New("multiple Read calls return no data or error")
 // a non-zero number of bytes at the end of the input stream may
 // return either err == EOF or err == nil. The next Read should
 // return 0, EOF.
+// 当 Read 在成功读到 n > 0 bytes 后遇到一个错误或读到文件末尾，它将返回读到的字节
+// 它将在一些调用时返回 (non-nil) error 或后续调用中返回一个 error ( 同时n=0)。
+// 这个通用 case 的一个实例是 Reader 在在读取一个输入流末尾时返回一个非 0 的字节数，
+// 在输入流的尾部将会返回 err == EOF 或 err == nil。 下一次 Read 将返回 0，EOF。
 //
 // Callers should always process the n > 0 bytes returned before
 // considering the error err. Doing so correctly handles I/O errors
 // that happen after reading some bytes and also both of the
 // allowed EOF behaviors.
+// 调用者在考虑err 错误之前应当总是先处理返回的 n>0 的字节。在读取一些字节的以后，
+// 处理 I/O 错误 和
+//
 //
 // Implementations of Read are discouraged from returning a
 // zero byte count with a nil error, except when len(p) == 0.
 // Callers should treat a return of 0 and nil as indicating that
 // nothing happened; in particular it does not indicate EOF.
+// Read的实现不鼓励返回一个 0 字节的计数和一个空的错误，除非 len(p) == 0。
+// 调用者应当将返回值为 0 和 nil 的返回视为什么都没有发生的标志；特别是它不表示 EOF
 //
 // Implementations must not retain p.
+// 实现一定不能保留 p
 type Reader interface {
 	Read(p []byte) (n int, err error)
 }
 
 // Writer is the interface that wraps the basic Write method.
+// Writer 是基本的 Write 方法的包装接口
 //
 // Write writes len(p) bytes from p to the underlying data stream.
 // It returns the number of bytes written from p (0 <= n <= len(p))
 // and any error encountered that caused the write to stop early.
 // Write must return a non-nil error if it returns n < len(p).
 // Write must not modify the slice data, even temporarily.
+// Write 从将 p 指向的 len(p) 个字节写入底层字节流。它返回写入的字节数和任何会导致
+// 写入操作提前停止的 err
+//
 //
 // Implementations must not retain p.
+// 实现一定不能保留 p
 type Writer interface {
 	Write(p []byte) (n int, err error)
 }
 
 // Closer is the interface that wraps the basic Close method.
+// Closer 是 Close 基本方法的包装接口
 //
 // The behavior of Close after the first call is undefined.
 // Specific implementations may document their own behavior.
+// 在首次调用后再次调用 Close的行为是未定义的，具体实现应当在自己的文档中说明
+//
+
 type Closer interface {
 	Close() error
 }
 
 // Seeker is the interface that wraps the basic Seek method.
+// Seeker 是基础 Seek 方法的包装接口
 //
 // Seek sets the offset for the next Read or Write to offset,
 // interpreted according to whence:
@@ -114,16 +153,25 @@ type Closer interface {
 // SeekEnd means relative to the end.
 // Seek returns the new offset relative to the start of the
 // file or an error, if any.
+// Seek 设置下一次读或写的偏移，具体偏移根据 whence 参数解释:
+// SeekStart 表示相对于文件的开头
+// SeekCurrent 表示相对于当前偏移量
+// SeekEnd 表示相对于文件末尾
+// Seek 返回相对于文件起始位置的新偏移量或一个错误，如果有的话
 //
 // Seeking to an offset before the start of the file is an error.
 // Seeking to any positive offset may be allowed, but if the new offset exceeds
 // the size of the underlying object the behavior of subsequent I/O operations
 // is implementation-dependent.
+// 将偏移量设置在文件开始之前是一个 error。设置到任意正 offset 是被允许的，如果新的偏移量超过
+// 底层对象的长度，那么后续 I/O操作的的行为依赖于具体实现
+//
 type Seeker interface {
 	Seek(offset int64, whence int) (int64, error)
 }
 
 // ReadWriter is the interface that groups the basic Read and Write methods.
+// ReadWriter 是组合基本的 Read 和 Write 方法的 interface
 type ReadWriter interface {
 	Reader
 	Writer
@@ -176,53 +224,75 @@ type ReadWriteSeeker interface {
 }
 
 // ReaderFrom is the interface that wraps the ReadFrom method.
+// ReaderFrom 是一个保障了基本 ReadFrom 方法的接口
 //
 // ReadFrom reads data from r until EOF or error.
 // The return value n is the number of bytes read.
 // Any error except EOF encountered during the read is also returned.
+// ReadFrom 从 r 读取数据知道遇到 EOF 或 error
+// 返回值 n 是读到的字节数，咋读的过程中遇到除了 EOF 外的任何错误都会返回
 //
 // The Copy function uses ReaderFrom if available.
+// 如果可用的话，copy 函数也使用 ReaderFrom
 type ReaderFrom interface {
 	ReadFrom(r Reader) (n int64, err error)
 }
 
 // WriterTo is the interface that wraps the WriteTo method.
+// WriteTo 是包装基本 WriteTo 方法的 interface
 //
 // WriteTo writes data to w until there's no more data to write or
 // when an error occurs. The return value n is the number of bytes
 // written. Any error encountered during the write is also returned.
+// WriteTo 写数据到 w 直到没有数据科协或发生错误，返回值 n 是写入的字节数。写的过程中
+// 遇到任何错误都将被返回
 //
 // The Copy function uses WriterTo if available.
+// 如果可用的情况下，Copy 函数将使用 WriteTo
 type WriterTo interface {
 	WriteTo(w Writer) (n int64, err error)
 }
 
 // ReaderAt is the interface that wraps the basic ReadAt method.
+// ReaderAt 是基本 ReadAt 函数的包装接口
 //
 // ReadAt reads len(p) bytes into p starting at offset off in the
 // underlying input source. It returns the number of bytes
 // read (0 <= n <= len(p)) and any error encountered.
+// ReadAt 从一个底层输入源偏移开始读 len(p) 字节数据到 p，它返回读取的字节数
+// 和发生的错误
 //
 // When ReadAt returns n < len(p), it returns a non-nil error
 // explaining why more bytes were not returned. In this respect,
 // ReadAt is stricter than Read.
+// 当 ReadAt 返回 n < len(p), 它返回一个非 nil 的错误以说明为什么没有更多的字节返回
+// 在这方面，ReadAt 比 Read 更加严格
 //
 // Even if ReadAt returns n < len(p), it may use all of p as scratch
 // space during the call. If some data is available but not len(p) bytes,
 // ReadAt blocks until either all the data is available or an error occurs.
 // In this respect ReadAt is different from Read.
+// 即使 ReadAt 返回的 n < len(p), 它在调用时，也将使用所有 p 作为暂存空间。如果一些数据可用
+// 但是不够 len(p) 字节，ReadAt 将阻塞知道所有的数据可用或发生一个错误。
+// 在这方面，ReadAt 和 Read 不同。
 //
 // If the n = len(p) bytes returned by ReadAt are at the end of the
 // input source, ReadAt may return either err == EOF or err == nil.
+// 在输入源结束时 如果 ReadAt 返回的 n = len(p)，ReadAt 将返回 err == EOF
+// 或 err == nil 中任意一个
 //
 // If ReadAt is reading from an input source with a seek offset,
 // ReadAt should not affect nor be affected by the underlying
 // seek offset.
+// 如果 ReadAt 从一个携带偏移量的输入源读数据，ReadAt 不应该影响也不会受到
+// 底层 seek 偏移量的影响
 //
 // Clients of ReadAt can execute parallel ReadAt calls on the
 // same input source.
+// ReadAt 客户端可以在相同的输入源调用上执行并发操作
 //
 // Implementations must not retain p.
+// 实现不得保留 p
 type ReaderAt interface {
 	ReadAt(p []byte, off int64) (n int, err error)
 }
@@ -640,7 +710,7 @@ func ReadAll(r Reader) ([]byte, error) {
 	for {
 		if len(b) == cap(b) {
 			// Add more capacity (let append pick how much).
-			b = append(b, 0)[:len(b)]
+			b = append(b, 0)[:len(b)]gggg
 		}
 		n, err := r.Read(b[len(b):cap(b)])
 		b = b[:len(b)+n]
