@@ -121,9 +121,9 @@ type Reader interface {
 // and any error encountered that caused the write to stop early.
 // Write must return a non-nil error if it returns n < len(p).
 // Write must not modify the slice data, even temporarily.
-// Write 从将 p 指向的 len(p) 个字节写入底层字节流。它返回写入的字节数和任何会导致
-// 写入操作提前停止的 err
-//
+// Write 从将 p 指向的 len(p) 个字节写入底层字节流。它返回从 p 写入的字节数和任何会导致
+// 写入操作提前停止的 err。如果 n < len(p), Write 一定返回一个非 nil 的错误。
+// Write 一定不要修改底层 slice 数据，甚至临时修改。
 //
 // Implementations must not retain p.
 // 实现一定不能保留 p
@@ -254,7 +254,7 @@ type WriterTo interface {
 }
 
 // ReaderAt is the interface that wraps the basic ReadAt method.
-// ReaderAt 是基本 ReadAt 函数的包装接口
+// ReaderAt 是基本 ReadAt 函数的包装接口（WriterAt对称操作将不再翻译）
 //
 // ReadAt reads len(p) bytes into p starting at offset off in the
 // underlying input source. It returns the number of bytes
@@ -317,32 +317,43 @@ type WriterAt interface {
 }
 
 // ByteReader is the interface that wraps the ReadByte method.
+// ByteReader 是包装了 ReadByte 方法的 interface
+//
 //
 // ReadByte reads and returns the next byte from the input or
 // any error encountered. If ReadByte returns an error, no input
 // byte was consumed, and the returned byte value is undefined.
+// ReadByte 从输入读取和返回下一个字节或遇到的错误。如果 ReadByte 返回一个错误，
+// 没有输入字节被消费，并且返回字节值是未定义的
 //
 // ReadByte provides an efficient interface for byte-at-time
 // processing. A Reader that does not implement  ByteReader
 // can be wrapped using bufio.NewReader to add this method.
+// ReadByte 提供为实时字节处理提供一个高效的接口。一个未实现 ByteReader接口
+// 的 Reader 可以使用 bufio.NewReader 包装和添加这个方法
 type ByteReader interface {
 	ReadByte() (byte, error)
 }
 
 // ByteScanner is the interface that adds the UnreadByte method to the
 // basic ReadByte method.
+// ByteScanner  是一个在基础的 ReadByte 方法上添加了 UnreadByte 方法的接口
 //
 // UnreadByte causes the next call to ReadByte to return the last byte read.
 // If the last operation was not a successful call to ReadByte, UnreadByte may
 // return an error, unread the last byte read (or the byte prior to the
 // last-unread byte), or (in implementations that support the Seeker interface)
 // seek to one byte before the current offset.
+// UnreadByte 导致下一次 ReadByte调用返回最后一个读到的字节。如果最后一次操作不是一个成功的 ReadByte 调用
+// UnreadByte 会返回一个 error.unread 最后一个读取到的字节或 seek 1 个字节到当前 offset 之前
+//
 type ByteScanner interface {
 	ByteReader
 	UnreadByte() error
 }
 
 // ByteWriter is the interface that wraps the WriteByte method.
+// ByteWriter 是一个包装了 WriteByte 方法的 interface
 type ByteWriter interface {
 	WriteByte(c byte) error
 }
@@ -370,6 +381,7 @@ type RuneScanner interface {
 }
 
 // StringWriter is the interface that wraps the WriteString method.
+// StringWriter 是一个包装了 WriteString 的接口
 type StringWriter interface {
 	WriteString(s string) (n int, err error)
 }
@@ -377,6 +389,8 @@ type StringWriter interface {
 // WriteString writes the contents of the string s to w, which accepts a slice of bytes.
 // If w implements StringWriter, its WriteString method is invoked directly.
 // Otherwise, w.Write is called exactly once.
+// WriteString 接收一个 bytes 数组，将 string 的内容写入到 w
+// 如果 w 实现了 StringWriter, 会直接调用它的 WriteString 方法。否则会调用 w.Write。
 func WriteString(w Writer, s string) (n int, err error) {
 	if sw, ok := w.(StringWriter); ok {
 		return sw.WriteString(s)
@@ -392,6 +406,11 @@ func WriteString(w Writer, s string) (n int, err error) {
 // If min is greater than the length of buf, ReadAtLeast returns ErrShortBuffer.
 // On return, n >= min if and only if err == nil.
 // If r returns an error having read at least min bytes, the error is dropped.
+// ReadAtLeast 从 r 读到 buf, 直到读到 min 个字节。EOF error 尽在没有字节可读的情况下返回。
+// 如果在读到 的字节数少于 min bytes 遇到了 EOF ，ReadAtLeast 会返回 ErrUnexpectedEOF
+// 如果 min 比 buf 的长度大，ReadAtLeast 会返回 ErrShortBuffer。
+// 在返回上，当且仅当 n >= min 时 err == nil。
+// 如果 r 在读取至少 min 字节时返回了一个错误，则丢弃该错误。
 func ReadAtLeast(r Reader, buf []byte, min int) (n int, err error) {
 	if len(buf) < min {
 		return 0, ErrShortBuffer
@@ -416,6 +435,10 @@ func ReadAtLeast(r Reader, buf []byte, min int) (n int, err error) {
 // ReadFull returns ErrUnexpectedEOF.
 // On return, n == len(buf) if and only if err == nil.
 // If r returns an error having read at least len(buf) bytes, the error is dropped.
+// ReadFull 将 r 中的 len(buf) 个字节准确地读入 buf. 它将返回复制的字节数和如果读到的字节较少会返回
+// 错误，仅当未读取任何字节时错误为 EOF。如果在读取一些但不是所有字节时遇到 EOF，则会返回ErrUnexpectedEOF
+// 在返回时，当且仅当 n == len(buf)时，err == nil
+// 如果在读取至少 len(buf)个字节时 r 返回一个错误，error 会被丢弃。
 func ReadFull(r Reader, buf []byte) (n int, err error) {
 	return ReadAtLeast(r, buf, len(buf))
 }
@@ -427,6 +450,13 @@ func ReadFull(r Reader, buf []byte) (n int, err error) {
 //
 // If dst implements the ReaderFrom interface,
 // the copy is implemented using it.
+// CopyN 从 src 到 dst 拷贝 n 个字节（或直到遇到一个 error）
+// 它将返回复制的字节数 和 copy 时最早遇到的错误
+// 作为返回值， 当且仅当 err == nil 时候 written == n。
+//
+// 如果 dst 实现了 ReaderFrom interface，copy 的视线会使用它。
+//
+
 func CopyN(dst Writer, src Reader, n int64) (written int64, err error) {
 	written, err = Copy(dst, LimitReader(src, n))
 	if written == n {
@@ -442,15 +472,24 @@ func CopyN(dst Writer, src Reader, n int64) (written int64, err error) {
 // Copy copies from src to dst until either EOF is reached
 // on src or an error occurs. It returns the number of bytes
 // copied and the first error encountered while copying, if any.
+// Copy 从 src 拷贝数据到 dst，直到遇到 EOF 或一个错误。它返回已拷贝
+// 的字节数和拷贝时最先遇到任何错误
 //
 // A successful Copy returns err == nil, not err == EOF.
 // Because Copy is defined to read from src until EOF, it does
 // not treat an EOF from Read as an error to be reported.
+// 一个成功的 Copy 返回 err == nil， 而不是 err == EOF
+// 因为 Copy 被定义为从 src 读书数据直到遇到 EOF，它并不认为从 Read 读到 EOF
+// 是一个错误 而上报它
 //
 // If src implements the WriterTo interface,
 // the copy is implemented by calling src.WriteTo(dst).
 // Otherwise, if dst implements the ReaderFrom interface,
 // the copy is implemented by calling dst.ReadFrom(src).
+// 如果 src 实现了 WriteTo 接口，则 copy 将被时限为调用 src.WriteTo(dst)
+// 另外，如果 dst 实现了 ReaderFrom 接口，copy 将被实现为调用
+// dst.ReaderFrom(src)
+//
 func Copy(dst Writer, src Reader) (written int64, err error) {
 	return copyBuffer(dst, src, nil)
 }
@@ -459,9 +498,13 @@ func Copy(dst Writer, src Reader) (written int64, err error) {
 // provided buffer (if one is required) rather than allocating a
 // temporary one. If buf is nil, one is allocated; otherwise if it has
 // zero length, CopyBuffer panics.
+// CopyBuffer 是和 Copy 一样的方法，除了它通过将数据暂存在提供的缓冲区外而不是申请
+// 一块临时的空间。如果 buf 为 nil，将申请一个；另外如果 buf 长度为 0，则 panic
 //
 // If either src implements WriterTo or dst implements ReaderFrom,
 // buf will not be used to perform the copy.
+// 如果 src 实现了 WriteTo 或 dst 实现了 ReaderFrom，但是buf 不会用于执行 copy。
+//
 func CopyBuffer(dst Writer, src Reader, buf []byte) (written int64, err error) {
 	if buf != nil && len(buf) == 0 {
 		panic("empty buffer in CopyBuffer")
@@ -525,12 +568,16 @@ func copyBuffer(dst Writer, src Reader, buf []byte) (written int64, err error) {
 // LimitReader returns a Reader that reads from r
 // but stops with EOF after n bytes.
 // The underlying implementation is a *LimitedReader.
+// LimitReader 返回一个 从 r 读但在读 n 个字节后以 Eof 结束的 Reader
+// 底层实现是一个 *LimitedReader
 func LimitReader(r Reader, n int64) Reader { return &LimitedReader{r, n} }
 
 // A LimitedReader reads from R but limits the amount of
 // data returned to just N bytes. Each call to Read
 // updates N to reflect the new amount remaining.
 // Read returns EOF when N <= 0 or when the underlying R returns EOF.
+// 一个 LimitedReader 从 R 读数据但限制读取返回的字节数为 n。
+// 每次调用 Read 更新 N 以反映新的剩余数量,当 N <= 0 或底层 R 返回 EOF 时，Read 返回 EOF。
 type LimitedReader struct {
 	R Reader // underlying reader
 	N int64  // max bytes remaining
@@ -565,6 +612,7 @@ func NewSectionReader(r ReaderAt, off int64, n int64) *SectionReader {
 
 // SectionReader implements Read, Seek, and ReadAt on a section
 // of an underlying ReaderAt.
+// SectionReader 在一个底层 ReaderAt section 上 实现了 Read, Seek, and ReadAt
 type SectionReader struct {
 	r     ReaderAt
 	base  int64
@@ -710,7 +758,7 @@ func ReadAll(r Reader) ([]byte, error) {
 	for {
 		if len(b) == cap(b) {
 			// Add more capacity (let append pick how much).
-			b = append(b, 0)[:len(b)]gggg
+			b = append(b, 0)[:len(b)]
 		}
 		n, err := r.Read(b[len(b):cap(b)])
 		b = b[:len(b)+n]
