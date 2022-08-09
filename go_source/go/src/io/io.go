@@ -739,6 +739,7 @@ func (discard) ReadFrom(r Reader) (n int64, err error) {
 
 // NopCloser returns a ReadCloser with a no-op Close method wrapping
 // the provided Reader r.
+//  NopCloser 返回一个 ReadCloser， 包装了提供的 Reader r 的无操作方法Close 方法
 func NopCloser(r Reader) ReadCloser {
 	return nopCloser{r}
 }
