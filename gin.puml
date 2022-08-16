@@ -1,0 +1,887 @@
+@startuml
+namespace binding {
+    interface Binding  {
+        + Name() string
+        + Bind( *http.Request,  any) error
+        + Name() string
+        + Bind( *http.Request,  any) error
+
+    }
+    interface BindingBody  {
+        + BindBody( []byte,  any) error
+        + BindBody( []byte,  any) error
+
+    }
+    interface BindingUri  {
+        + Name() string
+        + BindUri( <font color=blue>map</font>[string][]string,  any) error
+        + Name() string
+        + BindUri( <font color=blue>map</font>[string][]string,  any) error
+
+    }
+    class SliceValidationError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    interface StructValidator  {
+        + ValidateStruct( any) error
+        + Engine() any
+        + ValidateStruct( any) error
+        + Engine() any
+
+    }
+    interface any  {
+    }
+    class binding.SliceValidationError << (T, #FF7700) >>  {
+    }
+    class binding.formSource << (T, #FF7700) >>  {
+    }
+    class binding.headerSource << (T, #FF7700) >>  {
+    }
+    class binding.multipartRequest << (T, #FF7700) >>  {
+    }
+    class defaultValidator << (S,Aquamarine) >> {
+        - once sync.Once
+        - validate *validator.Validate
+
+        - validateStruct(obj any) error
+        - lazyinit() 
+
+        + ValidateStruct(obj any) error
+        + Engine() any
+
+    }
+    class formBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+
+    }
+    class formMultipartBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+
+    }
+    class formPostBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+
+    }
+    class formSource << (S,Aquamarine) >> {
+        + TrySet(value reflect.Value, field reflect.StructField, tagValue string, opt setOptions) (bool, error)
+
+    }
+    class headerBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+
+    }
+    class headerSource << (S,Aquamarine) >> {
+        + TrySet(value reflect.Value, field reflect.StructField, tagValue string, opt setOptions) (bool, error)
+
+    }
+    class jsonBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class msgpackBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class multipartRequest << (S,Aquamarine) >> {
+        + TrySet(value reflect.Value, field reflect.StructField, key string, opt setOptions) (bool, error)
+
+    }
+    class protobufBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class queryBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+
+    }
+    class setOptions << (S,Aquamarine) >> {
+        - isDefaultExists bool
+        - defaultValue string
+
+    }
+    interface setter  {
+        + TrySet(value reflect.Value, field reflect.StructField, key string, opt setOptions) (bool, error)
+
+    }
+    class tomlBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class uriBinding << (S,Aquamarine) >> {
+        + Name() string
+        + BindUri(m <font color=blue>map</font>[string][]string, obj any) error
+
+    }
+    class xmlBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class yamlBinding << (S,Aquamarine) >> {
+        + Name() string
+        + Bind(req *http.Request, obj any) error
+        + BindBody(body []byte, obj any) error
+
+    }
+    class "http.Request" as httpRequest {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+}
+"binding.Binding" *-- "binding.BindingBody"
+
+"binding.StructValidator" <|-- "binding.defaultValidator"
+"binding.Binding" <|-- "binding.formBinding"
+"binding.Binding" <|-- "binding.formMultipartBinding"
+"binding.Binding" <|-- "binding.formPostBinding"
+"binding.setter" <|-- "binding.formSource"
+"binding.Binding" <|-- "binding.headerBinding"
+"binding.setter" <|-- "binding.headerSource"
+"binding.Binding" <|-- "binding.jsonBinding"
+"binding.BindingBody" <|-- "binding.jsonBinding"
+"binding.Binding" <|-- "binding.msgpackBinding"
+"binding.BindingBody" <|-- "binding.msgpackBinding"
+"binding.setter" <|-- "binding.multipartRequest"
+"binding.Binding" <|-- "binding.protobufBinding"
+"binding.BindingBody" <|-- "binding.protobufBinding"
+"binding.Binding" <|-- "binding.queryBinding"
+"binding.Binding" <|-- "binding.tomlBinding"
+"binding.BindingBody" <|-- "binding.tomlBinding"
+"binding.BindingUri" <|-- "binding.uriBinding"
+"binding.Binding" <|-- "binding.xmlBinding"
+"binding.BindingBody" <|-- "binding.xmlBinding"
+"binding.Binding" <|-- "binding.yamlBinding"
+"binding.BindingBody" <|-- "binding.yamlBinding"
+
+namespace gin {
+    class Context << (S,Aquamarine) >> {
+        - writermem responseWriter
+        - handlers HandlersChain
+        - index int8
+        - fullPath string
+        - engine *Engine
+        - params *Params
+        - skippedNodes *[]skippedNode
+        - mu sync.RWMutex
+        - queryCache url.Values
+        - formCache url.Values
+        - sameSite http.SameSite
+
+        + Request *http.Request
+        + Writer ResponseWriter
+        + Params Params
+        + Keys <font color=blue>map</font>[string]any
+        + Errors errorMsgs
+        + Accepted []string
+
+        - reset() 
+        - initQueryCache() 
+        - initFormCache() 
+        - get(m <font color=blue>map</font>[string][]string, key string) (<font color=blue>map</font>[string]string, bool)
+        - requestHeader(key string) string
+
+        + Copy() *Context
+        + HandlerName() string
+        + HandlerNames() []string
+        + Handler() HandlerFunc
+        + FullPath() string
+        + Next() 
+        + IsAborted() bool
+        + Abort() 
+        + AbortWithStatus(code int) 
+        + AbortWithStatusJSON(code int, jsonObj any) 
+        + AbortWithError(code int, err error) *Error
+        + Error(err error) *Error
+        + Set(key string, value any) 
+        + Get(key string) (any, bool)
+        + MustGet(key string) any
+        + GetString(key string) string
+        + GetBool(key string) bool
+        + GetInt(key string) int
+        + GetInt64(key string) int64
+        + GetUint(key string) uint
+        + GetUint64(key string) uint64
+        + GetFloat64(key string) float64
+        + GetTime(key string) time.Time
+        + GetDuration(key string) time.Duration
+        + GetStringSlice(key string) []string
+        + GetStringMap(key string) <font color=blue>map</font>[string]any
+        + GetStringMapString(key string) <font color=blue>map</font>[string]string
+        + GetStringMapStringSlice(key string) <font color=blue>map</font>[string][]string
+        + Param(key string) string
+        + AddParam(key string, value string) 
+        + Query(key string) string
+        + DefaultQuery(key string, defaultValue string) string
+        + GetQuery(key string) (string, bool)
+        + QueryArray(key string) []string
+        + GetQueryArray(key string) ([]string, bool)
+        + QueryMap(key string) <font color=blue>map</font>[string]string
+        + GetQueryMap(key string) (<font color=blue>map</font>[string]string, bool)
+        + PostForm(key string) string
+        + DefaultPostForm(key string, defaultValue string) string
+        + GetPostForm(key string) (string, bool)
+        + PostFormArray(key string) []string
+        + GetPostFormArray(key string) ([]string, bool)
+        + PostFormMap(key string) <font color=blue>map</font>[string]string
+        + GetPostFormMap(key string) (<font color=blue>map</font>[string]string, bool)
+        + FormFile(name string) (*multipart.FileHeader, error)
+        + MultipartForm() (*multipart.Form, error)
+        + SaveUploadedFile(file *multipart.FileHeader, dst string) error
+        + Bind(obj any) error
+        + BindJSON(obj any) error
+        + BindXML(obj any) error
+        + BindQuery(obj any) error
+        + BindYAML(obj any) error
+        + BindTOML(obj <font color=blue>interface</font>{}) error
+        + BindHeader(obj any) error
+        + BindUri(obj any) error
+        + MustBindWith(obj any, b binding.Binding) error
+        + ShouldBind(obj any) error
+        + ShouldBindJSON(obj any) error
+        + ShouldBindXML(obj any) error
+        + ShouldBindQuery(obj any) error
+        + ShouldBindYAML(obj any) error
+        + ShouldBindTOML(obj <font color=blue>interface</font>{}) error
+        + ShouldBindHeader(obj any) error
+        + ShouldBindUri(obj any) error
+        + ShouldBindWith(obj any, b binding.Binding) error
+        + ShouldBindBodyWith(obj any, bb binding.BindingBody) error
+        + ClientIP() string
+        + RemoteIP() string
+        + ContentType() string
+        + IsWebsocket() bool
+        + Status(code int) 
+        + Header(key string, value string) 
+        + GetHeader(key string) string
+        + GetRawData() ([]byte, error)
+        + SetSameSite(samesite http.SameSite) 
+        + SetCookie(name string, value string, maxAge int, path string, domain string, secure bool, httpOnly bool) 
+        + Cookie(name string) (string, error)
+        + Render(code int, r render.Render) 
+        + HTML(code int, name string, obj any) 
+        + IndentedJSON(code int, obj any) 
+        + SecureJSON(code int, obj any) 
+        + JSONP(code int, obj any) 
+        + JSON(code int, obj any) 
+        + AsciiJSON(code int, obj any) 
+        + PureJSON(code int, obj any) 
+        + XML(code int, obj any) 
+        + YAML(code int, obj any) 
+        + TOML(code int, obj <font color=blue>interface</font>{}) 
+        + ProtoBuf(code int, obj any) 
+        + String(code int, format string, values ...any) 
+        + Redirect(code int, location string) 
+        + Data(code int, contentType string, data []byte) 
+        + DataFromReader(code int, contentLength int64, contentType string, reader io.Reader, extraHeaders <font color=blue>map</font>[string]string) 
+        + File(filepath string) 
+        + FileFromFS(filepath string, fs http.FileSystem) 
+        + FileAttachment(filepath string, filename string) 
+        + SSEvent(name string, message any) 
+        + Stream(step <font color=blue>func</font>(io.Writer) bool) bool
+        + Negotiate(code int, config Negotiate) 
+        + NegotiateFormat(offered ...string) string
+        + SetAccepted(formats ...string) 
+        + Deadline() (time.Time, bool)
+        + Done() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + Err() error
+        + Value(key any) any
+        + BindWith(obj any, b binding.Binding) error
+
+    }
+    class Engine << (S,Aquamarine) >> {
+        - delims render.Delims
+        - secureJSONPrefix string
+        - allNoRoute HandlersChain
+        - allNoMethod HandlersChain
+        - noRoute HandlersChain
+        - noMethod HandlersChain
+        - pool sync.Pool
+        - trees methodTrees
+        - maxParams uint16
+        - maxSections uint16
+        - trustedProxies []string
+        - trustedCIDRs []*net.IPNet
+
+        + RedirectTrailingSlash bool
+        + RedirectFixedPath bool
+        + HandleMethodNotAllowed bool
+        + ForwardedByClientIP bool
+        + AppEngine bool
+        + UseRawPath bool
+        + UnescapePathValues bool
+        + RemoveExtraSlash bool
+        + RemoteIPHeaders []string
+        + TrustedPlatform string
+        + MaxMultipartMemory int64
+        + UseH2C bool
+        + ContextWithFallback bool
+        + HTMLRender render.HTMLRender
+        + FuncMap template.FuncMap
+
+        - allocateContext() *Context
+        - rebuild404Handlers() 
+        - rebuild405Handlers() 
+        - addRoute(method string, path string, handlers HandlersChain) 
+        - prepareTrustedCIDRs() ([]*net.IPNet, error)
+        - isUnsafeTrustedProxies() bool
+        - parseTrustedProxies() error
+        - isTrustedProxy(ip net.IP) bool
+        - validateHeader(header string) (string, bool)
+        - handleHTTPRequest(c *Context) 
+
+        + Handler() http.Handler
+        + Delims(left string, right string) *Engine
+        + SecureJsonPrefix(prefix string) *Engine
+        + LoadHTMLGlob(pattern string) 
+        + LoadHTMLFiles(files ...string) 
+        + SetHTMLTemplate(templ *template.Template) 
+        + SetFuncMap(funcMap template.FuncMap) 
+        + NoRoute(handlers ...HandlerFunc) 
+        + NoMethod(handlers ...HandlerFunc) 
+        + Use(middleware ...HandlerFunc) IRoutes
+        + Routes() RoutesInfo
+        + Run(addr ...string) error
+        + SetTrustedProxies(trustedProxies []string) error
+        + RunTLS(addr string, certFile string, keyFile string) error
+        + RunUnix(file string) error
+        + RunFd(fd int) error
+        + RunListener(listener net.Listener) error
+        + ServeHTTP(w http.ResponseWriter, req *http.Request) 
+        + HandleContext(c *Context) 
+
+    }
+    class Error << (S,Aquamarine) >> {
+        + Err error
+        + Type ErrorType
+        + Meta any
+
+        + SetType(flags ErrorType) *Error
+        + SetMeta(data any) *Error
+        + JSON() any
+        + MarshalJSON() ([]byte, error)
+        + Error() string
+        + IsType(flags ErrorType) bool
+        + Unwrap() error
+
+    }
+    class H << (S,Aquamarine) >> {
+        + MarshalXML(e *xml.Encoder, start xml.StartElement) error
+
+    }
+    class HandlersChain << (S,Aquamarine) >> {
+        + Last() HandlerFunc
+
+    }
+    interface IRouter  {
+        + Group( string,  ...HandlerFunc) *RouterGroup
+
+    }
+    interface IRoutes  {
+        + Use( ...HandlerFunc) IRoutes
+        + Handle( string,  string,  ...HandlerFunc) IRoutes
+        + Any( string,  ...HandlerFunc) IRoutes
+        + GET( string,  ...HandlerFunc) IRoutes
+        + POST( string,  ...HandlerFunc) IRoutes
+        + DELETE( string,  ...HandlerFunc) IRoutes
+        + PATCH( string,  ...HandlerFunc) IRoutes
+        + PUT( string,  ...HandlerFunc) IRoutes
+        + OPTIONS( string,  ...HandlerFunc) IRoutes
+        + HEAD( string,  ...HandlerFunc) IRoutes
+        + StaticFile( string,  string) IRoutes
+        + StaticFileFS( string,  string,  http.FileSystem) IRoutes
+        + Static( string,  string) IRoutes
+        + StaticFS( string,  http.FileSystem) IRoutes
+
+    }
+    class LogFormatterParams << (S,Aquamarine) >> {
+        - isTerm bool
+
+        + Request *http.Request
+        + TimeStamp time.Time
+        + StatusCode int
+        + Latency time.Duration
+        + ClientIP string
+        + Method string
+        + Path string
+        + ErrorMessage string
+        + BodySize int
+        + Keys <font color=blue>map</font>[string]any
+
+        + StatusCodeColor() string
+        + MethodColor() string
+        + ResetColor() string
+        + IsOutputColor() bool
+
+    }
+    class LoggerConfig << (S,Aquamarine) >> {
+        + Formatter LogFormatter
+        + Output io.Writer
+        + SkipPaths []string
+
+    }
+    class Negotiate << (S,Aquamarine) >> {
+        + Offered []string
+        + HTMLName string
+        + HTMLData any
+        + JSONData any
+        + XMLData any
+        + YAMLData any
+        + Data any
+        + TOMLData any
+
+    }
+    class Param << (S,Aquamarine) >> {
+        + Key string
+        + Value string
+
+    }
+    class Params << (S,Aquamarine) >> {
+        + Get(name string) (string, bool)
+        + ByName(name string) string
+
+    }
+    interface ResponseWriter  {
+        + Status() int
+        + Size() int
+        + WriteString( string) (int, error)
+        + Written() bool
+        + WriteHeaderNow() 
+        + Pusher() http.Pusher
+
+    }
+    class RouteInfo << (S,Aquamarine) >> {
+        + Method string
+        + Path string
+        + Handler string
+        + HandlerFunc HandlerFunc
+
+    }
+    class RouterGroup << (S,Aquamarine) >> {
+        - basePath string
+        - engine *Engine
+        - root bool
+
+        + Handlers HandlersChain
+
+        - handle(httpMethod string, relativePath string, handlers HandlersChain) IRoutes
+        - staticFileHandler(relativePath string, handler HandlerFunc) IRoutes
+        - createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc
+        - combineHandlers(handlers HandlersChain) HandlersChain
+        - calculateAbsolutePath(relativePath string) string
+        - returnObj() IRoutes
+
+        + Use(middleware ...HandlerFunc) IRoutes
+        + Group(relativePath string, handlers ...HandlerFunc) *RouterGroup
+        + BasePath() string
+        + Handle(httpMethod string, relativePath string, handlers ...HandlerFunc) IRoutes
+        + POST(relativePath string, handlers ...HandlerFunc) IRoutes
+        + GET(relativePath string, handlers ...HandlerFunc) IRoutes
+        + DELETE(relativePath string, handlers ...HandlerFunc) IRoutes
+        + PATCH(relativePath string, handlers ...HandlerFunc) IRoutes
+        + PUT(relativePath string, handlers ...HandlerFunc) IRoutes
+        + OPTIONS(relativePath string, handlers ...HandlerFunc) IRoutes
+        + HEAD(relativePath string, handlers ...HandlerFunc) IRoutes
+        + Any(relativePath string, handlers ...HandlerFunc) IRoutes
+        + StaticFile(relativePath string, filepath string) IRoutes
+        + StaticFileFS(relativePath string, filepath string, fs http.FileSystem) IRoutes
+        + Static(relativePath string, root string) IRoutes
+        + StaticFS(relativePath string, fs http.FileSystem) IRoutes
+
+    }
+    interface any  {
+    }
+    class authPair << (S,Aquamarine) >> {
+        - value string
+        - user string
+
+    }
+    class authPairs << (S,Aquamarine) >> {
+        - searchCredential(authValue string) (string, bool)
+
+    }
+    class errorMsgs << (S,Aquamarine) >> {
+        + ByType(typ ErrorType) errorMsgs
+        + Last() *Error
+        + Errors() []string
+        + JSON() any
+        + MarshalJSON() ([]byte, error)
+        + String() string
+
+    }
+    class gin.Accounts << (T, #FF7700) >>  {
+    }
+    class gin.ErrorType << (T, #FF7700) >>  {
+    }
+    class gin.H << (T, #FF7700) >>  {
+    }
+    class gin.HandlerFunc << (T, #FF7700) >>  {
+    }
+    class gin.HandlersChain << (T, #FF7700) >>  {
+    }
+    class gin.LogFormatter << (T, #FF7700) >>  {
+    }
+    class gin.Params << (T, #FF7700) >>  {
+    }
+    class gin.RecoveryFunc << (T, #FF7700) >>  {
+    }
+    class gin.RoutesInfo << (T, #FF7700) >>  {
+    }
+    class gin.authPairs << (T, #FF7700) >>  {
+    }
+    class gin.consoleColorModeValue << (T, #FF7700) >>  {
+    }
+    class gin.errorMsgs << (T, #FF7700) >>  {
+    }
+    class gin.methodTrees << (T, #FF7700) >>  {
+    }
+    class gin.nodeType << (T, #FF7700) >>  {
+    }
+    class methodTree << (S,Aquamarine) >> {
+        - method string
+        - root *node
+
+    }
+    class methodTrees << (S,Aquamarine) >> {
+        - get(method string) *node
+
+    }
+    class neuteredReaddirFile << (S,Aquamarine) >> {
+        + Readdir(count int) ([]os.FileInfo, error)
+
+    }
+    class node << (S,Aquamarine) >> {
+        - path string
+        - indices string
+        - wildChild bool
+        - nType nodeType
+        - priority uint32
+        - children []*node
+        - handlers HandlersChain
+        - fullPath string
+
+        - addChild(child *node) 
+        - incrementChildPrio(pos int) int
+        - addRoute(path string, handlers HandlersChain) 
+        - insertChild(path string, fullPath string, handlers HandlersChain) 
+        - getValue(path string, params *Params, skippedNodes *[]skippedNode, unescape bool) nodeValue
+        - findCaseInsensitivePath(path string, fixTrailingSlash bool) ([]byte, bool)
+        - findCaseInsensitivePathRec(path string, ciPath []byte, rb []byte, fixTrailingSlash bool) []byte
+
+    }
+    class nodeValue << (S,Aquamarine) >> {
+        - handlers HandlersChain
+        - params *Params
+        - tsr bool
+        - fullPath string
+
+    }
+    class onlyFilesFS << (S,Aquamarine) >> {
+        - fs http.FileSystem
+
+        + Open(name string) (http.File, error)
+
+    }
+    class responseWriter << (S,Aquamarine) >> {
+        - size int
+        - status int
+
+        - reset(writer http.ResponseWriter) 
+
+        + WriteHeader(code int) 
+        + WriteHeaderNow() 
+        + Write(data []byte) (int, error)
+        + WriteString(s string) (int, error)
+        + Status() int
+        + Size() int
+        + Written() bool
+        + Hijack() (net.Conn, *bufio.ReadWriter, error)
+        + CloseNotify() <font color=blue>chan</font> bool
+        + Flush() 
+        + Pusher() http.Pusher
+
+    }
+    class skippedNode << (S,Aquamarine) >> {
+        - path string
+        - node *node
+        - paramsCount int16
+
+    }
+}
+"gin.RouterGroup" *-- "gin.Engine"
+"gin.IRoutes" *-- "gin.IRouter"
+"http.File" *-- "gin.neuteredReaddirFile"
+"http.ResponseWriter" *-- "gin.responseWriter"
+
+"gin.IRouter" <|-- "gin.RouterGroup"
+"gin.IRoutes" <|-- "gin.RouterGroup"
+"gin.ResponseWriter" <|-- "gin.responseWriter"
+
+namespace protoexample {
+    class FOO << (S,Aquamarine) >> {
+        + Enum() *FOO
+        + String() string
+        + Descriptor() protoreflect.EnumDescriptor
+        + Type() protoreflect.EnumType
+        + Number() protoreflect.EnumNumber
+        + UnmarshalJSON(b []byte) error
+        + EnumDescriptor() ([]byte, []int)
+
+    }
+    class Test << (S,Aquamarine) >> {
+        - state protoimpl.MessageState
+        - sizeCache protoimpl.SizeCache
+        - unknownFields protoimpl.UnknownFields
+
+        + Label *string
+        + Type *int32
+        + Reps []int64
+        + Optionalgroup *Test_OptionalGroup
+
+        + Reset() 
+        + String() string
+        + ProtoMessage() 
+        + ProtoReflect() protoreflect.Message
+        + Descriptor() ([]byte, []int)
+        + GetLabel() string
+        + GetType() int32
+        + GetReps() []int64
+        + GetOptionalgroup() *Test_OptionalGroup
+
+    }
+    class Test_OptionalGroup << (S,Aquamarine) >> {
+        - state protoimpl.MessageState
+        - sizeCache protoimpl.SizeCache
+        - unknownFields protoimpl.UnknownFields
+
+        + RequiredField *string
+
+        + Reset() 
+        + String() string
+        + ProtoMessage() 
+        + ProtoReflect() protoreflect.Message
+        + Descriptor() ([]byte, []int)
+        + GetRequiredField() string
+
+    }
+    interface any  {
+    }
+    class protoexample.FOO << (T, #FF7700) >>  {
+    }
+}
+
+
+namespace render {
+    class AsciiJSON << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class Data << (S,Aquamarine) >> {
+        + ContentType string
+        + Data []byte
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class Delims << (S,Aquamarine) >> {
+        + Left string
+        + Right string
+
+    }
+    class HTML << (S,Aquamarine) >> {
+        + Template *template.Template
+        + Name string
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class HTMLDebug << (S,Aquamarine) >> {
+        + Files []string
+        + Glob string
+        + Delims Delims
+        + FuncMap template.FuncMap
+
+        - loadTemplate() *template.Template
+
+        + Instance(name string, data any) Render
+
+    }
+    class HTMLProduction << (S,Aquamarine) >> {
+        + Template *template.Template
+        + Delims Delims
+
+        + Instance(name string, data any) Render
+
+    }
+    interface HTMLRender  {
+        + Instance( string,  any) Render
+
+    }
+    class IndentedJSON << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class JSON << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class JsonpJSON << (S,Aquamarine) >> {
+        + Callback string
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class MsgPack << (S,Aquamarine) >> {
+        + Data any
+
+        + WriteContentType(w http.ResponseWriter) 
+        + Render(w http.ResponseWriter) error
+
+    }
+    class ProtoBuf << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class PureJSON << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class Reader << (S,Aquamarine) >> {
+        + ContentType string
+        + ContentLength int64
+        + Reader io.Reader
+        + Headers <font color=blue>map</font>[string]string
+
+        - writeHeaders(w http.ResponseWriter, headers <font color=blue>map</font>[string]string) 
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class Redirect << (S,Aquamarine) >> {
+        + Code int
+        + Request *http.Request
+        + Location string
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType( http.ResponseWriter) 
+
+    }
+    interface Render  {
+        + Render( http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class SecureJSON << (S,Aquamarine) >> {
+        + Prefix string
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class String << (S,Aquamarine) >> {
+        + Format string
+        + Data []any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class TOML << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class XML << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    class YAML << (S,Aquamarine) >> {
+        + Data any
+
+        + Render(w http.ResponseWriter) error
+        + WriteContentType(w http.ResponseWriter) 
+
+    }
+    interface any  {
+    }
+}
+
+"render.Render" <|-- "render.AsciiJSON"
+"render.Render" <|-- "render.Data"
+"render.Render" <|-- "render.HTML"
+"render.HTMLRender" <|-- "render.HTMLDebug"
+"render.HTMLRender" <|-- "render.HTMLProduction"
+"render.Render" <|-- "render.IndentedJSON"
+"render.Render" <|-- "render.JSON"
+"render.Render" <|-- "render.JsonpJSON"
+"render.Render" <|-- "render.MsgPack"
+"render.Render" <|-- "render.ProtoBuf"
+"render.Render" <|-- "render.PureJSON"
+"render.Render" <|-- "render.Reader"
+"render.Render" <|-- "render.Redirect"
+"render.Render" <|-- "render.SecureJSON"
+"render.Render" <|-- "render.String"
+"render.Render" <|-- "render.TOML"
+"render.Render" <|-- "render.XML"
+"render.Render" <|-- "render.YAML"
+
+"__builtin__.<font color=blue>map</font>[string][]string" #.. "binding.formSource"
+"__builtin__.<font color=blue>map</font>[string][]string" #.. "binding.headerSource"
+"__builtin__.<font color=blue>map</font>[string]string" #.. "gin.Accounts"
+"__builtin__.[]error" #.. "binding.SliceValidationError"
+"__builtin__.int" #.. "gin.consoleColorModeValue"
+"__builtin__.int32" #.. "protoexample.FOO"
+"__builtin__.uint64" #.. "gin.ErrorType"
+"__builtin__.uint8" #.. "gin.nodeType"
+"binding.httpRequest" #.. "binding.multipartRequest"
+"gin.<font color=blue>func</font>(*Context) " #.. "gin.HandlerFunc"
+"gin.<font color=blue>func</font>(*Context, any) " #.. "gin.RecoveryFunc"
+"gin.<font color=blue>func</font>(LogFormatterParams) string" #.. "gin.LogFormatter"
+"gin.<font color=blue>map</font>[string]any" #.. "gin.H"
+"gin.[]*Error" #.. "gin.errorMsgs"
+"gin.[]HandlerFunc" #.. "gin.HandlersChain"
+"gin.[]Param" #.. "gin.Params"
+"gin.[]RouteInfo" #.. "gin.RoutesInfo"
+"gin.[]authPair" #.. "gin.authPairs"
+"gin.[]methodTree" #.. "gin.methodTrees"
+@enduml
