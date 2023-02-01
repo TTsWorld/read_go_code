@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 /*
-	Package rpc provides access to the exported methods of an object across a
+	Package grpc provides access to the exported methods of an object across a
 	network or other I/O connection.  A server registers an object, making it visible
 	as a service with the name of the type of the object.  After registration, exported
 	methods of the object will be accessible remotely.  A server may register multiple
@@ -122,7 +122,7 @@
 	A server implementation will often provide a simple, type-safe wrapper for the
 	client.
 
-	The net/rpc package is frozen and is not accepting new features.
+	The net/grpc package is frozen and is not accepting new features.
 */
 package rpc
 
@@ -143,7 +143,7 @@ import (
 const (
 	// Defaults used by HandleHTTP
 	DefaultRPCPath   = "/_goRPC_"
-	DefaultDebugPath = "/debug/rpc"
+	DefaultDebugPath = "/debug/grpc"
 )
 
 // Precompute the reflect type for error. Can't use error directly
@@ -244,12 +244,12 @@ func (server *Server) register(rcvr any, name string, useName bool) error {
 		sname = name
 	}
 	if sname == "" {
-		s := "rpc.Register: no service name for type " + s.typ.String()
+		s := "grpc.Register: no service name for type " + s.typ.String()
 		log.Print(s)
 		return errors.New(s)
 	}
 	if !token.IsExported(sname) && !useName {
-		s := "rpc.Register: type " + sname + " is not exported"
+		s := "grpc.Register: type " + sname + " is not exported"
 		log.Print(s)
 		return errors.New(s)
 	}
@@ -264,16 +264,16 @@ func (server *Server) register(rcvr any, name string, useName bool) error {
 		// To help the user, see if a pointer receiver would work.
 		method := suitableMethods(reflect.PointerTo(s.typ), false)
 		if len(method) != 0 {
-			str = "rpc.Register: type " + sname + " has no exported methods of suitable type (hint: pass a pointer to value of that type)"
+			str = "grpc.Register: type " + sname + " has no exported methods of suitable type (hint: pass a pointer to value of that type)"
 		} else {
-			str = "rpc.Register: type " + sname + " has no exported methods of suitable type"
+			str = "grpc.Register: type " + sname + " has no exported methods of suitable type"
 		}
 		log.Print(str)
 		return errors.New(str)
 	}
 
 	if _, dup := server.serviceMap.LoadOrStore(sname, s); dup {
-		return errors.New("rpc: service already defined: " + sname)
+		return errors.New("grpc: service already defined: " + sname)
 	}
 	return nil
 }
@@ -293,7 +293,7 @@ func suitableMethods(typ reflect.Type, logErr bool) map[string]*methodType {
 		// Method needs three ins: receiver, *args, *reply.
 		if mtype.NumIn() != 3 {
 			if logErr {
-				log.Printf("rpc.Register: method %q has %d input parameters; needs exactly three\n", mname, mtype.NumIn())
+				log.Printf("grpc.Register: method %q has %d input parameters; needs exactly three\n", mname, mtype.NumIn())
 			}
 			continue
 		}
@@ -301,7 +301,7 @@ func suitableMethods(typ reflect.Type, logErr bool) map[string]*methodType {
 		argType := mtype.In(1)
 		if !isExportedOrBuiltinType(argType) {
 			if logErr {
-				log.Printf("rpc.Register: argument type of method %q is not exported: %q\n", mname, argType)
+				log.Printf("grpc.Register: argument type of method %q is not exported: %q\n", mname, argType)
 			}
 			continue
 		}
@@ -309,28 +309,28 @@ func suitableMethods(typ reflect.Type, logErr bool) map[string]*methodType {
 		replyType := mtype.In(2)
 		if replyType.Kind() != reflect.Pointer {
 			if logErr {
-				log.Printf("rpc.Register: reply type of method %q is not a pointer: %q\n", mname, replyType)
+				log.Printf("grpc.Register: reply type of method %q is not a pointer: %q\n", mname, replyType)
 			}
 			continue
 		}
 		// Reply type must be exported.
 		if !isExportedOrBuiltinType(replyType) {
 			if logErr {
-				log.Printf("rpc.Register: reply type of method %q is not exported: %q\n", mname, replyType)
+				log.Printf("grpc.Register: reply type of method %q is not exported: %q\n", mname, replyType)
 			}
 			continue
 		}
 		// Method needs one out.
 		if mtype.NumOut() != 1 {
 			if logErr {
-				log.Printf("rpc.Register: method %q has %d output parameters; needs exactly one\n", mname, mtype.NumOut())
+				log.Printf("grpc.Register: method %q has %d output parameters; needs exactly one\n", mname, mtype.NumOut())
 			}
 			continue
 		}
 		// The return type of the method must be error.
 		if returnType := mtype.Out(0); returnType != typeOfError {
 			if logErr {
-				log.Printf("rpc.Register: return type of method %q is %q, must be error\n", mname, returnType)
+				log.Printf("grpc.Register: return type of method %q is %q, must be error\n", mname, returnType)
 			}
 			continue
 		}
@@ -356,7 +356,7 @@ func (server *Server) sendResponse(sending *sync.Mutex, req *Request, reply any,
 	sending.Lock()
 	err := codec.WriteResponse(resp, reply)
 	if debugLog && err != nil {
-		log.Println("rpc: writing response:", err)
+		log.Println("grpc: writing response:", err)
 	}
 	sending.Unlock()
 	server.freeResponse(resp)
@@ -410,7 +410,7 @@ func (c *gobServerCodec) WriteResponse(r *Response, body any) (err error) {
 		if c.encBuf.Flush() == nil {
 			// Gob couldn't encode the header. Should not happen, so if it does,
 			// shut down the connection to signal that the connection is broken.
-			log.Println("rpc: gob error encoding response:", err)
+			log.Println("grpc: gob error encoding response:", err)
 			c.Close()
 		}
 		return
@@ -419,7 +419,7 @@ func (c *gobServerCodec) WriteResponse(r *Response, body any) (err error) {
 		if c.encBuf.Flush() == nil {
 			// Was a gob problem encoding the body but the header has been written.
 			// Shut down the connection to signal that the connection is broken.
-			log.Println("rpc: gob error encoding body:", err)
+			log.Println("grpc: gob error encoding body:", err)
 			c.Close()
 		}
 		return
@@ -462,7 +462,7 @@ func (server *Server) ServeCodec(codec ServerCodec) {
 		service, mtype, req, argv, replyv, keepReading, err := server.readRequest(codec)
 		if err != nil {
 			if debugLog && err != io.EOF {
-				log.Println("rpc:", err)
+				log.Println("grpc:", err)
 			}
 			if !keepReading {
 				break
@@ -590,7 +590,7 @@ func (server *Server) readRequestHeader(codec ServerCodec) (svc *service, mtype 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			return
 		}
-		err = errors.New("rpc: server cannot decode request: " + err.Error())
+		err = errors.New("grpc: server cannot decode request: " + err.Error())
 		return
 	}
 
@@ -600,7 +600,7 @@ func (server *Server) readRequestHeader(codec ServerCodec) (svc *service, mtype 
 
 	dot := strings.LastIndex(req.ServiceMethod, ".")
 	if dot < 0 {
-		err = errors.New("rpc: service/method request ill-formed: " + req.ServiceMethod)
+		err = errors.New("grpc: service/method request ill-formed: " + req.ServiceMethod)
 		return
 	}
 	serviceName := req.ServiceMethod[:dot]
@@ -609,13 +609,13 @@ func (server *Server) readRequestHeader(codec ServerCodec) (svc *service, mtype 
 	// Look up the request.
 	svci, ok := server.serviceMap.Load(serviceName)
 	if !ok {
-		err = errors.New("rpc: can't find service " + req.ServiceMethod)
+		err = errors.New("grpc: can't find service " + req.ServiceMethod)
 		return
 	}
 	svc = svci.(*service)
 	mtype = svc.method[methodName]
 	if mtype == nil {
-		err = errors.New("rpc: can't find method " + req.ServiceMethod)
+		err = errors.New("grpc: can't find method " + req.ServiceMethod)
 	}
 	return
 }
@@ -628,7 +628,7 @@ func (server *Server) Accept(lis net.Listener) {
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			log.Print("rpc.Serve: accept:", err.Error())
+			log.Print("grpc.Serve: accept:", err.Error())
 			return
 		}
 		go server.ServeConn(conn)
@@ -701,7 +701,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	conn, _, err := w.(http.Hijacker).Hijack()
 	if err != nil {
-		log.Print("rpc hijacking ", req.RemoteAddr, ": ", err.Error())
+		log.Print("grpc hijacking ", req.RemoteAddr, ": ", err.Error())
 		return
 	}
 	io.WriteString(conn, "HTTP/1.0 "+connected+"\n\n")

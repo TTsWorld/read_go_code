@@ -17,7 +17,7 @@ type testpair struct {
 }
 
 var pairs = []testpair{
-	// RFC 4648 examples
+	// RFC 4648 gin_examples
 	{"", ""},
 	{"f", "MY======"},
 	{"fo", "MZXQ===="},
@@ -26,7 +26,7 @@ var pairs = []testpair{
 	{"fooba", "MZXW6YTB"},
 	{"foobar", "MZXW6YTBOI======"},
 
-	// Wikipedia examples, converted to base32
+	// Wikipedia gin_examples, converted to base32
 	{"sure.", "ON2XEZJO"},
 	{"sure", "ON2XEZI="},
 	{"sur", "ON2XE==="},

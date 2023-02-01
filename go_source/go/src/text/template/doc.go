@@ -35,7 +35,7 @@ Here is a trivial example that prints "17 items are made of wool".
 	err = tmpl.Execute(os.Stdout, sweaters)
 	if err != nil { panic(err) }
 
-More intricate examples appear below.
+More intricate gin_examples appear below.
 
 Text and spaces
 

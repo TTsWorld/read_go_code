@@ -6,10 +6,14 @@
 // manipulate objects with arbitrary types. The typical use is to take a value
 // with static type interface{} and extract its dynamic type information by
 // calling TypeOf, which returns a Type.
+// 包反射实现运行时反射，允许程序 使用任意类型操作对象。典型用途是取值 使用静态类型interface{}，并通过以下方式提取其动态类型信息 调用 TypeOf，它返回一个 Type。
+//
+//
 //
 // A call to ValueOf returns a Value representing the run-time data.
 // Zero takes a Type and returns a Value representing a zero value
 // for that type.
+//  对 ValueOf 的调用返回一个表示运行时数据的值。 Zero 采用一个 Type 并返回一个表示零值的值 对于该类型。
 //
 // See "The Laws of Reflection" for an introduction to reflection in Go:
 // https://golang.org/doc/articles/laws_of_reflection.html

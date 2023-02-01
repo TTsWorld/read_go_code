@@ -120,7 +120,7 @@ func listenTCP() (net.Listener, string) {
 func startServer() {
 	Register(new(Arith))
 	Register(new(Embed))
-	RegisterName("net.rpc.Arith", new(Arith))
+	RegisterName("net.grpc.Arith", new(Arith))
 	Register(BuiltinTypes{})
 
 	var l net.Listener
@@ -136,7 +136,7 @@ func startNewServer() {
 	newServer = NewServer()
 	newServer.Register(new(Arith))
 	newServer.Register(new(Embed))
-	newServer.RegisterName("net.rpc.Arith", new(Arith))
+	newServer.RegisterName("net.grpc.Arith", new(Arith))
 	newServer.RegisterName("newServer.Arith", new(Arith))
 
 	var l net.Listener
@@ -198,7 +198,7 @@ func testRPC(t *testing.T, addr string) {
 	// expect an error
 	if err == nil {
 		t.Error("BadOperation: expected error")
-	} else if !strings.HasPrefix(err.Error(), "rpc: can't find method ") {
+	} else if !strings.HasPrefix(err.Error(), "grpc: can't find method ") {
 		t.Errorf("BadOperation: expected can't find method error; got %q", err)
 	}
 
@@ -291,7 +291,7 @@ func testRPC(t *testing.T, addr string) {
 	// ServiceName contain "." character
 	args = &Args{7, 8}
 	reply = new(Reply)
-	err = client.Call("net.rpc.Arith.Add", args, reply)
+	err = client.Call("net.grpc.Arith.Add", args, reply)
 	if err != nil {
 		t.Errorf("Add: expected no error but got string %q", err.Error())
 	}
@@ -601,7 +601,7 @@ func TestCountMallocs(t *testing.T) {
 	if runtime.GOMAXPROCS(0) > 1 {
 		t.Skip("skipping; GOMAXPROCS>1")
 	}
-	fmt.Printf("mallocs per rpc round trip: %v\n", countMallocs(dialDirect, t))
+	fmt.Printf("mallocs per grpc round trip: %v\n", countMallocs(dialDirect, t))
 }
 
 func TestCountMallocsOverHTTP(t *testing.T) {
@@ -611,7 +611,7 @@ func TestCountMallocsOverHTTP(t *testing.T) {
 	if runtime.GOMAXPROCS(0) > 1 {
 		t.Skip("skipping; GOMAXPROCS>1")
 	}
-	fmt.Printf("mallocs per HTTP rpc round trip: %v\n", countMallocs(dialHTTP, t))
+	fmt.Printf("mallocs per HTTP grpc round trip: %v\n", countMallocs(dialHTTP, t))
 }
 
 type writeCrasher struct {
@@ -689,7 +689,7 @@ func TestErrorAfterClientClose(t *testing.T) {
 func TestAcceptExitAfterListenerClose(t *testing.T) {
 	newServer := NewServer()
 	newServer.Register(new(Arith))
-	newServer.RegisterName("net.rpc.Arith", new(Arith))
+	newServer.RegisterName("net.grpc.Arith", new(Arith))
 	newServer.RegisterName("newServer.Arith", new(Arith))
 
 	var l net.Listener
@@ -762,10 +762,10 @@ func benchmarkEndToEnd(dial func() (*Client, error), b *testing.B) {
 		for pb.Next() {
 			err := client.Call("Arith.Add", args, reply)
 			if err != nil {
-				b.Fatalf("rpc error: Add: expected no error but got string %q", err.Error())
+				b.Fatalf("grpc error: Add: expected no error but got string %q", err.Error())
 			}
 			if reply.C != args.A+args.B {
-				b.Fatalf("rpc error: Add: expected %d got %d", reply.C, args.A+args.B)
+				b.Fatalf("grpc error: Add: expected %d got %d", reply.C, args.A+args.B)
 			}
 		}
 	})

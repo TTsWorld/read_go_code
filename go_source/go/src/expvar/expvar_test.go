@@ -473,7 +473,7 @@ func BenchmarkRealworldExpvarUsage(b *testing.B) {
 	// The benchmark creates GOMAXPROCS client/server pairs.
 	// Each pair creates 4 goroutines: client reader/writer and server reader/writer.
 	// The benchmark stresses concurrent reading and writing to the same connection.
-	// Such pattern is used in net/http and net/rpc.
+	// Such pattern is used in net/http and net/grpc.
 
 	b.StopTimer()
 

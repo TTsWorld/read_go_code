@@ -10,7 +10,7 @@ import (
 	"gonum.org/v1/gonum/cmplxs"
 )
 
-// Set of examples for all the functions
+// Set of gin_examples for all the functions
 
 func ExampleAdd_simple() {
 	// Adding three slices together. Note that

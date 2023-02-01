@@ -5,5 +5,10 @@
     <content url="file://$MODULE_DIR$" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="go_primer" />
+    <orderEntry type="module" module-name="go_tool" />
+    <orderEntry type="module" module-name="go_error" />
+    <orderEntry type="module" module-name="gin-base" />
+    <orderEntry type="module" module-name="go_course" />
   </component>
 </module>

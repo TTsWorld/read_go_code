@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This file shows some examples of generic types.
+// This file shows some gin_examples of generic types.
 
 package p
 
@@ -28,7 +28,7 @@ var root1 Tree[int]
 // The actual type parameter provided may be a generic type itself:
 var root2 Tree[List[int]]
 
-// A couple of more complex examples.
+// A couple of more complex gin_examples.
 // We don't need extra parentheses around the element type of the slices on
 // the right (unlike when we use ()'s rather than []'s for type parameters).
 var _ List[List[int]] = []List[int]{}
@@ -198,7 +198,7 @@ type _ struct {
 // one type argument. In that case, the type argument is the
 // respective type parameter to which the type bound applies.
 // Note: We may not permit this syntactic sugar at first.
-// Note: This is now disabled. All examples below are adjusted.
+// Note: This is now disabled. All gin_examples below are adjusted.
 type Adder[T any] interface {
 	Add(T) T
 }

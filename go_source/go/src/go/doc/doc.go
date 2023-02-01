@@ -31,7 +31,7 @@ type Package struct {
 	Vars   []*Value
 	Funcs  []*Func
 
-	// Examples is a sorted list of examples associated with
+	// Examples is a sorted list of gin_examples associated with
 	// the package. Examples are extracted from _test.go files
 	// provided to NewFromFiles.
 	Examples []*Example
@@ -58,7 +58,7 @@ type Type struct {
 	Funcs   []*Func  // sorted list of functions returning this type
 	Methods []*Func  // sorted list of methods (including embedded ones) of this type
 
-	// Examples is a sorted list of examples associated with
+	// Examples is a sorted list of gin_examples associated with
 	// this type. Examples are extracted from _test.go files
 	// provided to NewFromFiles.
 	Examples []*Example
@@ -76,7 +76,7 @@ type Func struct {
 	Orig  string // original receiver "T" or "*T"
 	Level int    // embedding level; 0 means not embedded
 
-	// Examples is a sorted list of examples associated with this
+	// Examples is a sorted list of gin_examples associated with this
 	// function or method. Examples are extracted from _test.go files
 	// provided to NewFromFiles.
 	Examples []*Example

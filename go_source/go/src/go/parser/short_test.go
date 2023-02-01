@@ -66,7 +66,7 @@ var valids = []string{
 	`package p; type I1 interface{}; type I2 interface{ I1 }`,
 }
 
-// validWithTParamsOnly holds source code examples that are valid if
+// validWithTParamsOnly holds source code gin_examples that are valid if
 // parseTypeParams is set, but invalid if not. When checking with the
 // parseTypeParams set, errors are ignored.
 var validWithTParamsOnly = []string{
@@ -224,7 +224,7 @@ var invalids = []string{
 	`package p; func f() { if true {} else defer /* ERROR "expected if statement or block" */ f() }`,
 }
 
-// invalidNoTParamErrs holds invalid source code examples annotated with the
+// invalidNoTParamErrs holds invalid source code gin_examples annotated with the
 // error messages produced when ParseTypeParams is not set.
 var invalidNoTParamErrs = []string{
 	`package p; type _[_ any /* ERROR "expected ']', found any" */ ] int; var _ = T[]{}`,
@@ -241,7 +241,7 @@ var invalidNoTParamErrs = []string{
 	`package p; func(*T[ /* ERROR "missing ',' in parameter list" */ e, e]) _()`,
 }
 
-// invalidTParamErrs holds invalid source code examples annotated with the
+// invalidTParamErrs holds invalid source code gin_examples annotated with the
 // error messages produced when ParseTypeParams is set.
 var invalidTParamErrs = []string{
 	`package p; type _[_ any] int; var _ = T[] /* ERROR "expected operand" */ {}`,

@@ -270,11 +270,11 @@ func (p *Profile) Count() int {
 // execution stack:
 //
 //	Add
-//	called from rpc.NewClient
+//	called from grpc.NewClient
 //	called from mypkg.Run
 //	called from main.main
 //
-// Passing skip=0 begins the stack trace at the call to Add inside rpc.NewClient.
+// Passing skip=0 begins the stack trace at the call to Add inside grpc.NewClient.
 // Passing skip=1 begins the stack trace at the call to NewClient inside mypkg.Run.
 //
 func (p *Profile) Add(value any, skip int) {

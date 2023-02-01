@@ -237,9 +237,9 @@ func ExampleTime_Format() {
 
 	// Most uses of Format and Parse use constant layout strings such as
 	// the ones defined in this package, but the interface is flexible,
-	// as these examples show.
+	// as these gin_examples show.
 
-	// Define a helper function to make the examples' output look nice.
+	// Define a helper function to make the gin_examples' output look nice.
 	do := func(name, layout, want string) {
 		got := t.Format(layout)
 		if want != got {
@@ -252,7 +252,7 @@ func ExampleTime_Format() {
 	// Print a header in our output.
 	fmt.Printf("\nFormats:\n\n")
 
-	// Simple starter examples.
+	// Simple starter gin_examples.
 	do("Basic full date", "Mon Jan 2 15:04:05 MST 2006", "Wed Feb 25 11:06:39 PST 2015")
 	do("Basic short date", "2006/01/02", "2015/02/25")
 
@@ -305,7 +305,7 @@ func ExampleTime_Format_pad() {
 		panic(err)
 	}
 
-	// Define a helper function to make the examples' output look nice.
+	// Define a helper function to make the gin_examples' output look nice.
 	do := func(name, layout, want string) {
 		got := t.Format(layout)
 		if want != got {

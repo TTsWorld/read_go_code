@@ -124,7 +124,7 @@ func TestTd(t *testing.T) {
 // Test vectors are from FIPS 197:
 //	https://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
 
-// Appendix A of FIPS 197: Key expansion examples
+// Appendix A of FIPS 197: Key expansion gin_examples
 type KeyTest struct {
 	key []byte
 	enc []uint32
@@ -212,7 +212,7 @@ var keyTests = []KeyTest{
 	},
 }
 
-// Test key expansion against FIPS 197 examples.
+// Test key expansion against FIPS 197 gin_examples.
 func TestExpandKey(t *testing.T) {
 L:
 	for i, tt := range keyTests {
@@ -240,7 +240,7 @@ L:
 	}
 }
 
-// Appendix B, C of FIPS 197: Cipher examples, Example vectors.
+// Appendix B, C of FIPS 197: Cipher gin_examples, Example vectors.
 type CryptTest struct {
 	key []byte
 	in  []byte
@@ -278,7 +278,7 @@ var encryptTests = []CryptTest{
 	},
 }
 
-// Test Cipher Encrypt method against FIPS 197 examples.
+// Test Cipher Encrypt method against FIPS 197 gin_examples.
 func TestCipherEncrypt(t *testing.T) {
 	for i, tt := range encryptTests {
 		c, err := NewCipher(tt.key)
@@ -297,7 +297,7 @@ func TestCipherEncrypt(t *testing.T) {
 	}
 }
 
-// Test Cipher Decrypt against FIPS 197 examples.
+// Test Cipher Decrypt against FIPS 197 gin_examples.
 func TestCipherDecrypt(t *testing.T) {
 	for i, tt := range encryptTests {
 		c, err := NewCipher(tt.key)

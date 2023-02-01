@@ -109,7 +109,7 @@ func Example_sortMultiKeys() {
 	OrderedBy(user).Sort(changes)
 	fmt.Println("By user:", changes)
 
-	// More examples.
+	// More gin_examples.
 	OrderedBy(user, increasingLines).Sort(changes)
 	fmt.Println("By user,<lines:", changes)
 

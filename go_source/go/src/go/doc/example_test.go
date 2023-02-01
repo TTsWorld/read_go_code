@@ -409,7 +409,7 @@ func TestExamplesWholeFile(t *testing.T) {
 		}
 		es := doc.Examples(file)
 		if len(es) != 1 {
-			t.Fatalf("%s: wrong number of examples; got %d want 1", c.Title, len(es))
+			t.Fatalf("%s: wrong number of gin_examples; got %d want 1", c.Title, len(es))
 		}
 		e := es[0]
 		if e.Name != "" {
@@ -471,7 +471,7 @@ func TestExampleInspectSignature(t *testing.T) {
 	}
 	es := doc.Examples(file)
 	if len(es) != 2 {
-		t.Fatalf("wrong number of examples; got %d want 2", len(es))
+		t.Fatalf("wrong number of gin_examples; got %d want 2", len(es))
 	}
 	// We are interested in the first example only.
 	e := es[0]
@@ -507,7 +507,7 @@ func TestExampleEmpty(t *testing.T) {
 
 	es := doc.Examples(file)
 	if len(es) != 1 {
-		t.Fatalf("wrong number of examples; got %d want 1", len(es))
+		t.Fatalf("wrong number of gin_examples; got %d want 1", len(es))
 	}
 	e := es[0]
 	if e.Name != "" {
@@ -533,7 +533,7 @@ func formatFile(t *testing.T, fset *token.FileSet, n *ast.File) string {
 }
 
 // This example illustrates how to use NewFromFiles
-// to compute package documentation with examples.
+// to compute package documentation with gin_examples.
 func ExampleNewFromFiles() {
 	// src and test are two source files that make up
 	// a package whose documentation will be computed.
@@ -564,7 +564,7 @@ func ExampleGreet_world() {
 		mustParse(fset, "src_test.go", test),
 	}
 
-	// Compute package documentation with examples.
+	// Compute package documentation with gin_examples.
 	p, err := doc.NewFromFiles(fset, files, "example.com/p")
 	if err != nil {
 		panic(err)
@@ -688,7 +688,7 @@ func ExampleConflict_conflict_suffix() {} // ambiguous with either Conflict or C
 		t.Fatalf("doc.NewFromFiles: %v", err)
 	}
 
-	// Collect the association of examples to top-level identifiers.
+	// Collect the association of gin_examples to top-level identifiers.
 	got := map[string][]string{}
 	got[""] = exampleNames(p.Examples)
 	for _, f := range p.Funcs {
@@ -705,7 +705,7 @@ func ExampleConflict_conflict_suffix() {} // ambiguous with either Conflict or C
 	}
 
 	want := map[string][]string{
-		"": {"", "suffix", "suffix_xX_X_x"}, // Package-level examples.
+		"": {"", "suffix", "suffix_xX_X_x"}, // Package-level gin_examples.
 
 		"Type1":     {"", "foo_Suffix", "func2", "suffix"},
 		"Type1_Foo": {"", "suffix"},

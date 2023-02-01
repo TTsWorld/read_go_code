@@ -52,7 +52,7 @@
 # Some C libraries present alternate versions for binary compatibility
 # and translate them on the way in and out of system calls, but
 # there is almost always a #define that can get the real ones.
-# See types_darwin.c and types_linux.c for examples.
+# See types_darwin.c and types_linux.c for gin_examples.
 #
 # * zerror_${GOOS}_${GOARCH}.go
 #

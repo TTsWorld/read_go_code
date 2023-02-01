@@ -126,6 +126,7 @@ type Conn interface {
 	Close() error
 
 	// LocalAddr returns the local network address, if known.
+	// 记录本地 addr
 	LocalAddr() Addr
 
 	// RemoteAddr returns the remote network address, if known.
@@ -152,6 +153,8 @@ type Conn interface {
 	// the deadline after successful Read or Write calls.
 	//
 	// A zero value for t means I/O operations will not time out.
+	// dealline
+	// ps:这里的 deadline 是一个绝对时间
 	SetDeadline(t time.Time) error
 
 	// SetReadDeadline sets the deadline for future Read calls

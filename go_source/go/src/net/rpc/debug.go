@@ -68,7 +68,7 @@ type debugHTTP struct {
 	*Server
 }
 
-// Runs at /debug/rpc
+// Runs at /debug/grpc
 func (server debugHTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Build a sorted version of the data.
 	var services serviceArray
@@ -85,6 +85,6 @@ func (server debugHTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	sort.Sort(services)
 	err := debug.Execute(w, services)
 	if err != nil {
-		fmt.Fprintln(w, "rpc: error executing template:", err.Error())
+		fmt.Fprintln(w, "grpc: error executing template:", err.Error())
 	}
 }

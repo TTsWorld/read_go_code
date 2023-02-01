@@ -6,6 +6,9 @@ package load
 
 import (
 	"bytes"
+	"cmd/go/internal/fsys"
+	"cmd/go/internal/str"
+	"cmd/go/internal/trace"
 	"context"
 	"errors"
 	"fmt"
@@ -20,10 +23,6 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"cmd/go/internal/fsys"
-	"cmd/go/internal/str"
-	"cmd/go/internal/trace"
 )
 
 var TestMainDeps = []string{
@@ -598,7 +597,7 @@ func (t *testFuncs) Tested() string {
 type testFunc struct {
 	Package   string // imported package name (_test or _xtest)
 	Name      string // function name
-	Output    string // output, for examples
+	Output    string // output, for gin_examples
 	Unordered bool   // output is allowed to be unordered.
 }
 
@@ -668,7 +667,7 @@ func (t *testFuncs) load(filename, pkg string, doImport, seen *bool) error {
 	for _, e := range ex {
 		*doImport = true // import test file whether executed or not
 		if e.Output == "" && !e.EmptyOutput {
-			// Don't run examples with no output.
+			// Don't run gin_examples with no output.
 			continue
 		}
 		t.Examples = append(t.Examples, testFunc{pkg, "Example" + e.Name, e.Output, e.Unordered})
@@ -736,7 +735,7 @@ var fuzzTargets = []testing.InternalFuzzTarget{
 {{end}}
 }
 
-var examples = []testing.InternalExample{
+var gin_examples = []testing.InternalExample{
 {{range .Examples}}
 	{"{{.Name}}", {{.Package}}.{{.Name}}, {{.Output | printf "%q"}}, {{.Unordered}}},
 {{end}}
@@ -794,7 +793,7 @@ func main() {
 		CoveredPackages: {{printf "%q" .Covered}},
 	})
 {{end}}
-	m := testing.MainStart(testdeps.TestDeps{}, tests, benchmarks, fuzzTargets, examples)
+	m := testing.MainStart(testdeps.TestDeps{}, tests, benchmarks, fuzzTargets, gin_examples)
 {{with .TestMain}}
 	{{.Package}}.{{.Name}}(m)
 	os.Exit(int(reflect.ValueOf(m).Elem().FieldByName("exitCode").Int()))

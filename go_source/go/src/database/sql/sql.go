@@ -11,7 +11,7 @@
 // Drivers that do not support context cancellation will not return until
 // after the query is completed.
 //
-// For usage examples, see the wiki page at
+// For usage gin_examples, see the wiki page at
 // https://golang.org/s/sqlwiki.
 package sql
 

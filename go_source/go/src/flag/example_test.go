@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// These examples demonstrate more intricate uses of the flag package.
+// These gin_examples demonstrate more intricate uses of the flag package.
 package flag_test
 
 import (

@@ -1178,6 +1178,8 @@ func Index(s, substr string) int {
 // returning the text before and after sep.
 // The found result reports whether sep appears in s.
 // If sep does not appear in s, cut returns s, "", false.
+// Cut 在 sep 的第一个实例周围切片 s， 返回 sep 之前和之后的文本，如果找到结，则返回 sep 是否出现在 s 中。
+// 如果 s 中没有出现 sep，cut返回 s,"",false
 func Cut(s, sep string) (before, after string, found bool) {
 	if i := Index(s, sep); i >= 0 {
 		return s[:i], s[i+len(sep):], true

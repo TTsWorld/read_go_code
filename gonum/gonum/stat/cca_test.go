@@ -70,7 +70,7 @@ tests:
 			}),
 			epsilon: 1e-12,
 		},
-		// Test results compared to those results presented in examples by
+		// Test results compared to those results presented in gin_examples by
 		// Koch, Inge. Analysis of multivariate and high-dimensional data.
 		// Vol. 32. Cambridge University Press, 2013. ISBN: 9780521887939
 		{ // ASA Car Exposition Data of Ramos and Donoho (1983)
@@ -99,7 +99,7 @@ tests:
 			}),
 			epsilon: 1e-12,
 		},
-		// Test results compared to those results presented in examples by
+		// Test results compared to those results presented in gin_examples by
 		// Koch, Inge. Analysis of multivariate and high-dimensional data.
 		// Vol. 32. Cambridge University Press, 2013. ISBN: 9780521887939
 		{ // Boston Housing Data of Harrison and Rubinfeld (1978)

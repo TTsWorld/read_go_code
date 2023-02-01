@@ -108,11 +108,13 @@ const iota = 0 // Untyped int.
 
 // nil is a predeclared identifier representing the zero value for a
 // pointer, channel, func, interface, map, or slice type.
+//nil 是一个预先声明的标识符，表示 指针、通道、函数、界面、映射或切片类型的零值
 var nil Type // Type must be a pointer, channel, func, interface, map, or slice type
 
 // Type is here for the purposes of documentation only. It is a stand-in
 // for any Go type, but represents the same type for any given function
 // invocation.
+//此处的类型仅用于文档目的。它是任何 Go 类型的替身，但表示任何给定函数调用的相同类型
 type Type int
 
 // Type1 is here for the purposes of documentation only. It is a stand-in

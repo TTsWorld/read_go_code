@@ -204,6 +204,7 @@ type iface struct {
 	data unsafe.Pointer
 }
 
+//empty interface
 type eface struct {
 	_type *_type
 	data  unsafe.Pointer
@@ -335,24 +336,33 @@ type gobuf struct {
 
 // sudog represents a g in a wait list, such as for sending/receiving
 // on a channel.
+// sudog是一个在等待队列中的 G 的封装
 //
 // sudog is necessary because the g ↔ synchronization object relation
 // is many-to-many. A g can be on many wait lists, so there may be
 // many sudogs for one g; and many gs may be waiting on the same
 // synchronization object, so there may be many sudogs for one object.
+// Sudog 表示等待列表中的 G ，例如在通道上发送/接收。sugog是等待队列和发送队列的包装，
+// SUDOG 是必需的，因为 G ↔ 同步对象关系是多对多的。一个
+// g可以在许多等待名单上，所以一个g可能有很多supdog;并且许多 GS 可能正在等待同一个同步对象，因此一个对象可能有很多 sudogs。
 //
 // sudogs are allocated from a special pool. Use acquireSudog and
 // releaseSudog to allocate and free them.
+// SUDOGS是从 特殊的 池中分配的。使用 获取Sudog 和释放 Sudog 来分配和释放它们。
 type sudog struct {
 	// The following fields are protected by the hchan.lock of the
 	// channel this sudog is blocking on. shrinkstack depends on
 	// this for sudogs involved in channel ops.
+	// 以下字段受 hchan.lock 的保护 这个 sudog 正在阻止的通道。
 
+	//当前 goroutine 的指针
 	g *g
 
+	//这是一个双向队列，所以会有前向指针和后向指针
 	next *sudog
 	prev *sudog
 	elem unsafe.Pointer // data element (may point to stack)
+	//元素指针，指向当前要接受/发送的位置
 
 	// The following fields are never accessed concurrently.
 	// For channels, waitlink is only accessed by g.
@@ -365,6 +375,7 @@ type sudog struct {
 
 	// isSelect indicates g is participating in a select, so
 	// g.selectDone must be CAS'd to win the wake-up race.
+	// isSelect表示 g 正在参与一个 select，因此 g.selectDone必须以 CAS 的方式来避免唤醒时的 data race
 	isSelect bool
 
 	// success indicates whether communication over channel c
@@ -373,10 +384,10 @@ type sudog struct {
 	// because c was closed.
 	success bool
 
-	parent   *sudog // semaRoot binary tree
-	waitlink *sudog // g.waiting list or semaRoot
-	waittail *sudog // semaRoot
-	c        *hchan // channel
+	parent   *sudog // semaRoot binary tree semaRoot 二叉树
+	waitlink *sudog // g.waiting list or semaRoot g.waiting 列表或 semaRoot
+	waittail *sudog // semaRoot semaRoot
+	c        *hchan // channel channel
 }
 
 type libcall struct {
@@ -887,8 +898,14 @@ type itab struct {
 	_type *_type
 	hash  uint32 // copy of _type.hash. Used for type switches.
 	_     [4]byte
-	fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
+	//为什么 fun 数组的大小为 1，要是接口定义了多个方法可怎么办？实际上，这里存储的是第一个方法的函数指针，如果有更多的方法，在它之后的内存空间里继续存储。从汇编角度来看，通过增加地址就能获取到这些函数指针，没什么影响。顺便提一句，这些方法是按照函数名称的字典序进行排列的。
+	fun [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
 }
+
+// itab 中包含 5 个字段。inner 存的是 interface 自己的静态类型。_type 存的是 interface 对应具体对象的类型。itab 中的 _type 和
+// iface 中的 data 能简要描述一个变量。_type 是这个变量对应的类型，data 是这个变量的值。这里的 hash 字段和 _type 中存的 hash 字段是完全一致的，
+// 这么做的目的是为了类型断言(下文会提到)。fun 是一个函数指针，它指向的是具体类型的函数方法。虽然这里只有一个函数指针，但是它可以调用很多方法。
+// 在这个指针对应内存地址的后面依次存储了多个方法，利用指针偏移便可以找到它们。
 
 // Lock-free stack node.
 // Also known to export_test.go.

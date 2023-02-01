@@ -417,7 +417,7 @@ func (impl Implementation) Dlaqr5(wantt, wantz bool, kacc22 int, n, ktop, kbot, 
 				// The following convergence test requires that the tradition
 				// small-compared-to-nearby-diagonals criterion and the Ahues &
 				// Tisseur (LAWN 122, 1997) criteria both be satisfied. The latter
-				// improves accuracy in some examples. Falling back on an alternate
+				// improves accuracy in some gin_examples. Falling back on an alternate
 				// convergence criterion when tst1 or tst2 is zero (as done here) is
 				// traditional but probably unnecessary.
 

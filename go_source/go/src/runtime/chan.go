@@ -31,23 +31,25 @@ const (
 )
 
 type hchan struct {
-	qcount   uint           // total data in the queue
-	dataqsiz uint           // size of the circular queue
-	buf      unsafe.Pointer // points to an array of dataqsiz elements
-	elemsize uint16
-	closed   uint32
-	elemtype *_type // element type
-	sendx    uint   // send index
-	recvx    uint   // receive index
-	recvq    waitq  // list of recv waiters
-	sendq    waitq  // list of send waiters
+	qcount   uint           // total data in the queue 队列中的所有数据
+	dataqsiz uint           // size of the circular queue 环形队列大小
+	buf      unsafe.Pointer // points to an array of dataqsiz elements  指向大小为 dataqsiz 的数组
+	elemsize uint16         //元素大小
+	closed   uint32         //是否关闭
+	elemtype *_type         // element type  元素类型
+	sendx    uint           // send index  发送索引
+	recvx    uint           // receive index 接受索引
+	recvq    waitq          // list of recv waiters recv 等待列表，即(<-chan)
+	sendq    waitq          // list of send waiters send 等待列表，即(chan<-)
 
 	// lock protects all fields in hchan, as well as several
 	// fields in sudogs blocked on this channel.
+	// lock 保护hchan 的所有字段，以及在此 chan 上阻塞的 sudog 的一些字段，
 	//
 	// Do not change another G's status while holding this lock
 	// (in particular, do not ready a G), as this can deadlock
 	// with stack shrinking.
+	//当持有此锁时不应该改变其他 G 的状态（特别的，不ready 一个 G）,因为他会在栈回收时发生死锁
 	lock mutex
 }
 
@@ -88,6 +90,8 @@ func makechan(t *chantype, size int) *hchan {
 	// Hchan does not contain pointers interesting for GC when elements stored in buf do not contain pointers.
 	// buf points into the same allocation, elemtype is persistent.
 	// SudoG's are referenced from their owning thread so they can't be collected.
+	// Hchan在当元素存储在 buf 且 不包含指针时，不包含对 GC 感兴趣的指针，buf 指向了相同的分配区，elemtype 是持久的
+	// sudoG则被他们有用的现成索引，所以他们无法被搜索
 	// TODO(dvyukov,rlh): Rethink when collector can move allocated objects.
 	var c *hchan
 	switch {

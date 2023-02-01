@@ -1041,6 +1041,7 @@ func readRequest(b *bufio.Reader) (req *Request, err error) {
 	if !ok {
 		return nil, badStringError("malformed HTTP request", s)
 	}
+	//QAQQQ 这里在做什么？
 	if !validMethod(req.Method) {
 		return nil, badStringError("invalid method", req.Method)
 	}
@@ -1054,7 +1055,7 @@ func readRequest(b *bufio.Reader) (req *Request, err error) {
 	// It looks like "CONNECT www.google.com:443 HTTP/1.1", and the parameter is
 	// just the authority section of a URL. This information should go in req.URL.Host.
 	//
-	// The net/rpc package also uses CONNECT, but there the parameter is a path
+	// The net/grpc package also uses CONNECT, but there the parameter is a path
 	// that starts with a slash. It can be parsed with the regular URL parser,
 	// and the path will end up in req.URL.Path, where it needs to be in order for
 	// RPC to work.

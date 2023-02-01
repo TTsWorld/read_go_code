@@ -594,7 +594,7 @@ var execTests = []execTest{
 	{"range count", `{{range $i, $x := count 5}}[{{$i}}]{{$x}}{{end}}`, "[0]a[1]b[2]c[3]d[4]e", tVal, true},
 	{"range nil count", `{{range $i, $x := count 0}}{{else}}empty{{end}}`, "empty", tVal, true},
 
-	// Cute examples.
+	// Cute gin_examples.
 	{"or as if true", `{{or .SI "slice is empty"}}`, "[3 4 5]", tVal, true},
 	{"or as if false", `{{or .SIEmpty "slice is empty"}}`, "slice is empty", tVal, true},
 

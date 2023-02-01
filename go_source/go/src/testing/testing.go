@@ -88,7 +88,7 @@
 // The package also runs and verifies example code. Example functions may
 // include a concluding line comment that begins with "Output:" and is compared with
 // the standard output of the function when the tests are run. (The comparison
-// ignores leading and trailing space.) These are examples of an example:
+// ignores leading and trailing space.) These are gin_examples of an example:
 //
 //     func ExampleHello() {
 //         fmt.Println("hello")
@@ -119,7 +119,7 @@
 //
 // Example functions without output comments are compiled but not executed.
 //
-// The naming convention to declare examples for the package, a function F, a type T and
+// The naming convention to declare gin_examples for the package, a function F, a type T and
 // method M on type T are:
 //
 //     func Example() { ... }
@@ -385,8 +385,8 @@ func Init() {
 	chatty = flag.Bool("test.v", false, "verbose: print additional output")
 	count = flag.Uint("test.count", 1, "run tests and benchmarks `n` times")
 	coverProfile = flag.String("test.coverprofile", "", "write a coverage profile to `file`")
-	matchList = flag.String("test.list", "", "list tests, examples, and benchmarks matching `regexp` then exit")
-	match = flag.String("test.run", "", "run only tests and examples matching `regexp`")
+	matchList = flag.String("test.list", "", "list tests, gin_examples, and benchmarks matching `regexp` then exit")
+	match = flag.String("test.run", "", "run only tests and gin_examples matching `regexp`")
 	memProfile = flag.String("test.memprofile", "", "write an allocation profile to `file`")
 	memProfileRate = flag.Int("test.memprofilerate", 0, "set memory allocation profiling `rate` (see runtime.MemProfileRate)")
 	cpuProfile = flag.String("test.cpuprofile", "", "write a cpu profile to `file`")
@@ -431,7 +431,7 @@ var (
 	shuffle              *string
 	testlog              *string
 
-	haveExamples bool // are there examples?
+	haveExamples bool // are there gin_examples?
 
 	cpuList     []int
 	testlogFile *os.File
@@ -1710,7 +1710,7 @@ func (m *M) Run() (code int) {
 	m.before()
 	defer m.after()
 
-	// Run tests, examples, and benchmarks unless this is a fuzz worker process.
+	// Run tests, gin_examples, and benchmarks unless this is a fuzz worker process.
 	// Workers start after this is done by their parent process, and they should
 	// not repeat this work.
 	if !*isFuzzWorker {

@@ -15,7 +15,7 @@
 // dangerous input, or use the path/filepath package's Glob function.
 // To expand environment variables, use package os's ExpandEnv.
 //
-// Note that the examples in this package assume a Unix system.
+// Note that the gin_examples in this package assume a Unix system.
 // They may not run on Windows, and they do not run in the Go Playground
 // used by golang.org and godoc.org.
 package exec

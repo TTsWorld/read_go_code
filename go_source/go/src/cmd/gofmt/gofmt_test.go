@@ -144,7 +144,7 @@ func TestRewrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// add larger examples
+	// add larger gin_examples
 	match = append(match, "gofmt.go", "gofmt_test.go")
 
 	for _, in := range match {

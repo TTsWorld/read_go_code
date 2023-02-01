@@ -32,7 +32,7 @@ func TestValid(t *testing.T) {
 	}
 }
 
-// Tests of simple examples.
+// Tests of simple gin_examples.
 
 type example struct {
 	compact string

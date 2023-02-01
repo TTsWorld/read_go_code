@@ -838,7 +838,7 @@ func main() {
 		` \\\\\""x"""y z`,
 		"\tb\t\"x\ty\"",
 		` "Брад" d e`,
-		// examples from https://msdn.microsoft.com/en-us/library/17w5ykft.aspx
+		// gin_examples from https://msdn.microsoft.com/en-us/library/17w5ykft.aspx
 		` "abc" d e`,
 		` a\\b d"e f"g h`,
 		` a\\\"b c d`,

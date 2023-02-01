@@ -215,7 +215,7 @@
 
 	If an invalid argument is given for a verb, such as providing
 	a string to %d, the generated string will contain a
-	description of the problem, as in these examples:
+	description of the problem, as in these gin_examples:
 
 		Wrong type or unknown verb: %!verb(type=value)
 			Printf("%d", "hi"):        %!d(string=hi)

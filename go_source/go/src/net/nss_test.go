@@ -28,7 +28,7 @@ networks:       files
 protocols:      db files
 services:       db files
 ethers:         db files
-rpc:            db files
+grpc:            db files
 
 netgroup:       nis
 `
@@ -148,7 +148,7 @@ func TestParseNSSConf(t *testing.T) {
 						{source: "db"},
 						{source: "files"},
 					},
-					"rpc": {
+					"grpc": {
 						{source: "db"},
 						{source: "files"},
 					},

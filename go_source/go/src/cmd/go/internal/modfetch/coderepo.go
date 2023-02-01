@@ -7,6 +7,7 @@ package modfetch
 import (
 	"archive/zip"
 	"bytes"
+	"cmd/go/internal/modfetch/codehost"
 	"errors"
 	"fmt"
 	"io"
@@ -16,8 +17,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"cmd/go/internal/modfetch/codehost"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -217,10 +216,10 @@ func (r *codeRepo) appendIncompatibleVersions(list, incompatible []string) ([]st
 			// consumers to be on the v0/v1 line instead of a higher +incompatible
 			// version. (See https://golang.org/issue/34189.)
 			//
-			// We know of at least two examples where this behavior is desired
+			// We know of at least two gin_examples where this behavior is desired
 			// (github.com/russross/blackfriday@v2.0.0 and
 			// github.com/libp2p/go-libp2p@v6.0.23), and (as of 2019-10-29) have no
-			// concrete examples for which it is undesired.
+			// concrete gin_examples for which it is undesired.
 			return list, nil
 		}
 	}

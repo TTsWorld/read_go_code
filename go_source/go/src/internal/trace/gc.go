@@ -515,7 +515,7 @@ func (c *MMUCurve) MMU(window time.Duration) (mmu float64) {
 	return acc.mmu
 }
 
-// Examples returns n specific examples of the lowest mutator
+// Examples returns n specific gin_examples of the lowest mutator
 // utilization for the given window size. The returned windows will be
 // disjoint (otherwise there would be a huge number of
 // mostly-overlapping windows at the single lowest point). There are

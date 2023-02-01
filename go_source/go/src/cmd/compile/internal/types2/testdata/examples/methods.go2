@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// This file shows some examples of methods on type-parameterized types.
+// This file shows some gin_examples of methods on type-parameterized types.
 
 package p
 
@@ -28,7 +28,7 @@ var _ int = x.m1()
 // It cannot possibly be some other type because the receiver type is not
 // instantiated with concrete types, it is standing for the parameterized
 // receiver type.
-func (t T1[[ /* ERROR must be an identifier */ ]int]) m2() {}
+func (t T1[[] /* ERROR must be an identifier */ int]) m2() {}
 
 // Note that using what looks like a predeclared identifier, say int,
 // as type parameter in this situation is deceptive and considered bad
@@ -58,7 +58,7 @@ func (t T1[X]) m4() X { return t.a }
 // simply that such receiver type expressions perform two tasks simultaneously:
 // they declare the (local) type parameters and then use them to instantiate
 // the receiver type. Forgetting to provide a type parameter leads to an error.
-func (t T1 /* ERROR generic type .* without instantiation */ ) m5() {}
+func (t T1 /* ERROR generic type .* without instantiation */) m5() {}
 
 // However, sometimes we don't need the type parameter, and thus it is
 // inconvenient to have to choose a name. Since the receiver type expression
@@ -67,11 +67,11 @@ func (t T1 /* ERROR generic type .* without instantiation */ ) m5() {}
 func (t T1[_]) m6() {}
 
 // Naturally, these rules apply to any number of type parameters on the receiver
-// type. Here are some more complex examples.
+// type. Here are some more complex gin_examples.
 type T2[A, B, C any] struct {
-        a A
-        b B
-        c C
+	a A
+	b B
+	c C
 }
 
 // Naming of the type parameters is local and has no semantic impact:
@@ -81,8 +81,8 @@ func (t T2[X, Y, Z]) m3() (X, Y, Z) { return t.a, t.b, t.c }
 
 // Type parameters may be left blank if they are not needed:
 func (t T2[A, _, C]) m4() (A, C) { return t.a, t.c }
-func (t T2[_, _, X]) m5() X { return t.c }
-func (t T2[_, _, _]) m6() {}
+func (t T2[_, _, X]) m5() X      { return t.c }
+func (t T2[_, _, _]) m6()        {}
 
 // As usual, blank names may be used for any object which we don't care about
 // using later. For instance, we may write an unnamed method with a receiver
@@ -92,7 +92,8 @@ func (_ T2[_, _, _]) _() int { return 42 }
 // Because a receiver parameter list is simply a parameter list, we can
 // leave the receiver argument away for receiver types.
 type T0 struct{}
-func (T0) _() {}
+
+func (T0) _()    {}
 func (T1[A]) _() {}
 
 // For now, a lone type parameter is not permitted as RHS in a type declaration (issue #45639).
@@ -100,13 +101,13 @@ func (T1[A]) _() {}
 // // that it must be a pointer type. Such receiver types are not
 // // permitted.
 // type T3a[P interface{ ~int | ~string | ~float64 }] P
-// 
+//
 // func (T3a[_]) m() {} // this is ok
-// 
+//
 // type T3b[P interface{ ~unsafe.Pointer }] P
-// 
+//
 // func (T3b /* ERROR invalid receiver */ [_]) m() {}
-// 
+//
 // type T3c[P interface{ *int | *string }] P
-// 
+//
 // func (T3c /* ERROR invalid receiver */ [_]) m() {}

@@ -7,9 +7,9 @@
 package codegen
 
 // Notes:
-// - these examples use channels to provide a source of
+// - these gin_examples use channels to provide a source of
 //   unknown values that cannot be optimized away
-// - these examples use for loops to force branches
+// - these gin_examples use for loops to force branches
 //   backward (predicted taken)
 
 // ---------------------------------- //

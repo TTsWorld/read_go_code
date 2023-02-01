@@ -351,7 +351,7 @@ const (
 	// line is TBD.
 	//
 	// Optimizing compilation will move instructions around, and some of these will become known-bad as
-	// step targets for debugging purposes (examples: register spills and reloads; code generated into
+	// step targets for debugging purposes (gin_examples: register spills and reloads; code generated into
 	// the entry block; invariant code hoisted out of loops) but those instructions will still have interesting
 	// positions for profiling purposes. To reflect this these positions will be changed to PosNotStmt.
 	//

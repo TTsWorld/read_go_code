@@ -9,18 +9,7 @@
 package ssagen
 
 import (
-	"bufio"
-	"bytes"
 	"bootstrap/cmd/compile/internal/abi"
-	"fmt"
-	"bootstrap/go/constant"
-	"html"
-	"bootstrap/internal/buildcfg"
-	"os"
-	"path/filepath"
-	"bootstrap/sort"
-	"strings"
-
 	"bootstrap/cmd/compile/internal/base"
 	"bootstrap/cmd/compile/internal/ir"
 	"bootstrap/cmd/compile/internal/liveness"
@@ -35,6 +24,16 @@ import (
 	"bootstrap/cmd/internal/objabi"
 	"bootstrap/cmd/internal/src"
 	"bootstrap/cmd/internal/sys"
+	"bootstrap/go/constant"
+	"bootstrap/internal/buildcfg"
+	"bootstrap/sort"
+	"bufio"
+	"bytes"
+	"fmt"
+	"html"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 var ssaConfig *ssa.Config
@@ -6574,7 +6573,7 @@ func (s *State) Br(op obj.As, target *ssa.Block) *obj.Prog {
 // that reduce "jumpy" line number churn when debugging.
 // Spill/fill/copy instructions from the register allocator,
 // phi functions, and instructions with a no-pos position
-// are examples of instructions that can cause churn.
+// are gin_examples of instructions that can cause churn.
 func (s *State) DebugFriendlySetPosFrom(v *ssa.Value) {
 	switch v.Op {
 	case ssa.OpPhi, ssa.OpCopy, ssa.OpLoadReg, ssa.OpStoreReg:

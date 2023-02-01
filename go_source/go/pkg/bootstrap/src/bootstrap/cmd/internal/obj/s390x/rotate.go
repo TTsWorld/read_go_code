@@ -20,7 +20,7 @@ import (
 // endian order (bit 0 is the MSB, bit 63 is the LSB). They
 // may wrap around.
 //
-// Some examples:
+// Some gin_examples:
 //
 // Masked region             | Start | End
 // --------------------------+-------+----

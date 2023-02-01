@@ -31,23 +31,26 @@ const (
 // ../cmd/compile/internal/reflectdata/reflect.go:/^func.dcommontype and
 // ../reflect/type.go:/^type.rtype.
 // ../internal/reflectlite/type.go:/^type.rtype.
+// 由于 Go 语言是强类型语言，编译时对每个变量的类型信息做强校验，所以每个类型的元信息要用一个结构体描述。再者 Go 的反射也是基于类型的元信息实现的。
+// _type 就是所有类型最原始的元信息。
 type _type struct {
-	size       uintptr
-	ptrdata    uintptr // size of memory prefix holding all pointers
-	hash       uint32
-	tflag      tflag
-	align      uint8
-	fieldAlign uint8
-	kind       uint8
+	size       uintptr // 类型占用内存大小
+	ptrdata    uintptr // 包含所有指针的内存前缀大小 size of memory prefix holding all pointers
+	hash       uint32  // 类型 hash
+	tflag      tflag   // 标记位，主要用于反射
+	align      uint8   // 对齐字节信息
+	fieldAlign uint8   // 当前结构字段的对齐字节数
+	kind       uint8   // 基础类型枚举值, kind，这个字段描述的是如何解析基础类型。在 Go 语言中，基础类型是一个枚举常量，有 26 个基础类型,参考 reflect.Kind()
 	// function for comparing objects of this type
 	// (ptr to object A, ptr to object B) -> ==?
-	equal func(unsafe.Pointer, unsafe.Pointer) bool
+	equal func(unsafe.Pointer, unsafe.Pointer) bool // 比较两个形参对应对象的类型是否相等
 	// gcdata stores the GC type data for the garbage collector.
 	// If the KindGCProg bit is set in kind, gcdata is a GC program.
 	// Otherwise it is a ptrmask bitmap. See mbitmap.go for details.
-	gcdata    *byte
-	str       nameOff
-	ptrToThis typeOff
+	gcdata    *byte   // GC 类型的数据
+	str       nameOff // 类型名称字符串在二进制文件段中的偏移量
+	ptrToThis typeOff // 类型元信息指针在二进制文件段中的偏移量
+	// str 和 ptrToThis，对应的类型是 nameoff 和 typeOff。这两个字段的值是在链接器段合并和符号重定向的时候赋值的。
 }
 
 func (t *_type) string() string {
@@ -339,10 +342,12 @@ type imethod struct {
 	ityp typeOff
 }
 
+// 因为 Go 语言中函数方法是以包为单位隔离的。所以 interfacetype 除了保存 _type 还需要保存包路径等描述信息。
+// mhdr 存的是各个 interface 函数方法在段内的偏移值 offset，知道偏移值以后才方便调用
 type interfacetype struct {
-	typ     _type
-	pkgpath name
-	mhdr    []imethod
+	typ     _type     // 类型元信息
+	pkgpath name      // 包路径和描述信息等等
+	mhdr    []imethod // 表示接口所定义的函数列表
 }
 
 type maptype struct {

@@ -35,6 +35,7 @@ import (
 	"regexp"
 	"runtime"
 	"runtime/debug"
+	"std/net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,6 +48,17 @@ import (
 type dummyAddr string
 type oneConnListener struct {
 	conn net.Conn
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hello world")
+}
+
+func TestListenAndServe(t *testing.T) {
+	http.HandleFunc("/", indexHandler)
+	http.ListenAndServe(":8000", nil)
+
+	log.Println("Server exiting")
 }
 
 func (l *oneConnListener) Accept() (c net.Conn, err error) {

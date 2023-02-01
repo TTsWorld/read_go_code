@@ -340,7 +340,7 @@
 // 	go doc [<pkg>.][<sym>.]<methodOrField>
 //
 // The first item in this list matched by the argument is the one whose documentation
-// is printed. (See the examples below.) However, if the argument starts with a capital
+// is printed. (See the gin_examples below.) However, if the argument starts with a capital
 // letter it is assumed to identify a symbol or method in the current directory.
 //
 // For packages, the order of scanning is determined lexically in breadth-first order.
@@ -913,7 +913,7 @@
 // the test binary in brackets, as in "math/rand [math/rand.test]"
 // or "regexp [sort.test]". The ForTest field is also set to the name
 // of the package being tested ("math/rand" or "sort" in the previous
-// examples).
+// gin_examples).
 //
 // The Dir, Target, Shlib, Root, ConflictDir, and Export file paths
 // are all absolute paths.
@@ -2923,7 +2923,7 @@
 // 	    the command line argument must match exactly one package within the
 // 	    main module, and regexp must match exactly one fuzz test within
 // 	    that package. Fuzzing will occur after tests, benchmarks, seed corpora
-// 	    of other fuzz tests, and examples have completed. See the Fuzzing
+// 	    of other fuzz tests, and gin_examples have completed. See the Fuzzing
 // 	    section of the testing package documentation for details.
 //
 // 	-fuzztime t
@@ -2946,8 +2946,8 @@
 // 	    same information as the -v flag in a machine-readable format.
 //
 // 	-list regexp
-// 	    List tests, benchmarks, fuzz tests, or examples matching the regular
-// 	    expression. No tests, benchmarks, fuzz tests, or examples will be run.
+// 	    List tests, benchmarks, fuzz tests, or gin_examples matching the regular
+// 	    expression. No tests, benchmarks, fuzz tests, or gin_examples will be run.
 // 	    This will only list top-level tests. No subtest or subbenchmarks will be
 // 	    shown.
 //
@@ -2968,7 +2968,7 @@
 // 	    (see 'go help build').
 //
 // 	-run regexp
-// 	    Run only those tests, examples, and fuzz tests matching the regular
+// 	    Run only those tests, gin_examples, and fuzz tests matching the regular
 // 	    expression. For tests, the regular expression is split by unbracketed
 // 	    slash (/) characters into a sequence of regular expressions, and each
 // 	    part of a test's identifier must match the corresponding element in
@@ -3149,7 +3149,7 @@
 // An example function is similar to a test function but, instead of using
 // *testing.T to report success or failure, prints output to os.Stdout.
 // If the last comment in the function starts with "Output:" then the output
-// is compared exactly against the comment (see examples below). If the last
+// is compared exactly against the comment (see gin_examples below). If the last
 // comment begins with "Unordered output:" then the output is compared to the
 // comment, however the order of the lines is ignored. An example with no such
 // comment is compiled but not executed. An example with no text after
@@ -3157,7 +3157,7 @@
 //
 // Godoc displays the body of ExampleXxx to demonstrate the use
 // of the function, constant, or variable Xxx. An example of a method M with
-// receiver type T or *T is named ExampleT_M. There may be multiple examples
+// receiver type T or *T is named ExampleT_M. There may be multiple gin_examples
 // for a given function, constant, or variable, distinguished by a trailing _xxx,
 // where xxx is a suffix not beginning with an upper case letter.
 //

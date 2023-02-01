@@ -19,7 +19,7 @@ side by side view of the Go assembler and the PPC64 assembler output. This is
 extremely helpful in determining what final PPC64 assembly is generated from the
 corresponding Go assembly.
 
-In the examples below, the Go assembly is on the left, PPC64 assembly on the right.
+In the gin_examples below, the Go assembly is on the left, PPC64 assembly on the right.
 
 1. Operand ordering
 
@@ -208,7 +208,7 @@ In the examples below, the Go assembly is on the left, PPC64 assembly on the rig
   onto operands in the PPC64 assembly. When an operand in a shift instruction in the
   Go assembly is a bit mask, that mask is represented as a start and end bit in the
   PPC64 assembly instead of a mask. See the ISA for more detail on these types of shifts.
-  Here are a few examples:
+  Here are a few gin_examples:
 
     RLWMI $7,R3,$65535,R6 	=>	rlwimi r6,r3,7,16,31
     RLDMI $0,R4,$7,R6 		=>	rldimi r6,r4,0,61

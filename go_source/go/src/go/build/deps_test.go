@@ -509,8 +509,8 @@ var depsRules = `
 
 	# RPC
 	encoding/gob, encoding/json, go/token, html/template, net/http
-	< net/rpc
-	< net/rpc/jsonrpc;
+	< net/grpc
+	< net/grpc/jsonrpc;
 
 	# System Information
 	internal/cpu, sync

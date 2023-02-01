@@ -126,7 +126,7 @@ func (t SparseTree) treestructure1(b *Block, i int) string {
 // exit number of the last block visited, plus two, because
 // last.exit+1 is a reserved value.)
 //
-// examples:
+// gin_examples:
 //
 // single node tree Root, call with n=1
 //         entry=2 Root exit=5; returns 7

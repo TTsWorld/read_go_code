@@ -44,7 +44,7 @@ which is schematically one of these:
 	go doc [<pkg>.][<sym>.]<methodOrField>
 
 The first item in this list matched by the argument is the one whose documentation
-is printed. (See the examples below.) However, if the argument starts with a capital
+is printed. (See the gin_examples below.) However, if the argument starts with a capital
 letter it is assumed to identify a symbol or method in the current directory.
 
 For packages, the order of scanning is determined lexically in breadth-first order.

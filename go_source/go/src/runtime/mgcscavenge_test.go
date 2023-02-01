@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"internal/goos"
 	"math/rand"
-	. "runtime"
 	"testing"
+
+	. "runtime"
 )
 
 // makePallocData produces an initialized PallocData by setting
@@ -72,7 +73,7 @@ func TestFillAligned(t *testing.T) {
 			0x0000000000000008,
 			uint64(1) << (m - 1),
 			uint64(1) << m,
-			// Try a few fixed arbitrary examples.
+			// Try a few fixed arbitrary gin_examples.
 			0xb02b9effcf137016,
 			0x3975a076a9fbff18,
 			0x0f8c88ec3b81506e,

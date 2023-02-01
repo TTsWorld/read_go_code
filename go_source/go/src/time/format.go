@@ -38,7 +38,7 @@ import "errors"
 //
 // To define your own format, write down what the reference time would look like
 // formatted your way; see the values of constants like ANSIC, StampMicro or
-// Kitchen for examples. The model is to demonstrate what the reference time
+// Kitchen for gin_examples. The model is to demonstrate what the reference time
 // looks like so that the Format and Parse methods can apply the same
 // transformation to a general time value.
 //

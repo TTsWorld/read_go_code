@@ -9,7 +9,7 @@
 
 package types_test
 
-// This file shows examples of basic usage of the go/types API.
+// This file shows gin_examples of basic usage of the go/types API.
 //
 // To locate a Go package, use (*go/build.Context).Import.
 // To load, parse, and type-check a complete Go program

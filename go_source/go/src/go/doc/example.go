@@ -32,10 +32,10 @@ type Example struct {
 	Order       int  // original source code order
 }
 
-// Examples returns the examples found in testFiles, sorted by Name field.
-// The Order fields record the order in which the examples were encountered.
+// Examples returns the gin_examples found in testFiles, sorted by Name field.
+// The Order fields record the order in which the gin_examples were encountered.
 // The Suffix field is not populated when Examples is called directly, it is
-// only populated by NewFromFiles for examples it finds in _test.go files.
+// only populated by NewFromFiles for gin_examples it finds in _test.go files.
 //
 // Playable Examples must be in a package whose name ends in "_test".
 // An Example is "playable" (the Play field is non-nil) in either of these
@@ -153,7 +153,7 @@ func playExample(file *ast.File, f *ast.FuncDecl) *ast.File {
 	body := f.Body
 
 	if !strings.HasSuffix(file.Name.Name, "_test") {
-		// We don't support examples that are part of the
+		// We don't support gin_examples that are part of the
 		// greater package (yet).
 		return nil
 	}
@@ -278,7 +278,7 @@ func playExample(file *ast.File, f *ast.FuncDecl) *ast.File {
 			continue
 		}
 		if p == "syscall/js" {
-			// We don't support examples that import syscall/js,
+			// We don't support gin_examples that import syscall/js,
 			// because the package syscall/js is not available in the playground.
 			return nil
 		}
@@ -451,7 +451,7 @@ func lastComment(b *ast.BlockStmt, c []*ast.CommentGroup) (i int, last *ast.Comm
 	return
 }
 
-// classifyExamples classifies examples and assigns them to the Examples field
+// classifyExamples classifies gin_examples and assigns them to the Examples field
 // of the relevant Func, Type, or Package that the example is associated with.
 //
 // The classification process is ambiguous in some cases:
@@ -470,7 +470,7 @@ func classifyExamples(p *Package, examples []*Example) {
 
 	// Mapping of names for funcs, types, and methods to the example listing.
 	ids := make(map[string]*[]*Example)
-	ids[""] = &p.Examples // package-level examples have an empty name
+	ids[""] = &p.Examples // package-level gin_examples have an empty name
 	for _, f := range p.Funcs {
 		if !token.IsExported(f.Name) {
 			continue

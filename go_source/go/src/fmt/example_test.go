@@ -218,17 +218,17 @@ func Example_printers() {
 	// The vector (3 4) has length 5.
 }
 
-// These examples demonstrate the basics of printing using a format string. Printf,
+// These gin_examples demonstrate the basics of printing using a format string. Printf,
 // Sprintf, and Fprintf all take a format string that specifies how to format the
 // subsequent arguments. For example, %d (we call that a 'verb') says to print the
 // corresponding argument, which must be an integer (or something containing an
 // integer, such as a slice of ints) in decimal. The verb %v ('v' for 'value')
 // always formats the argument in its default form, just how Print or Println would
 // show it. The special verb %T ('T' for 'Type') prints the type of the argument
-// rather than its value. The examples are not exhaustive; see the package comment
+// rather than its value. The gin_examples are not exhaustive; see the package comment
 // for all the details.
 func Example_formats() {
-	// A basic set of examples showing that %v is the default format, in this
+	// A basic set of gin_examples showing that %v is the default format, in this
 	// case decimal for integers, which can be explicitly requested with %d;
 	// the output is just what Println generates.
 	integer := 23
@@ -242,7 +242,7 @@ func Example_formats() {
 	// Result: int *int
 
 	// Println(x) is the same as Printf("%v\n", x) so we will use only Printf
-	// in the following examples. Each one demonstrates how to format values of
+	// in the following gin_examples. Each one demonstrates how to format values of
 	// a particular type, such as integers or strings. We start each format
 	// string with %v to show the default output and follow that with one or
 	// more custom formats.

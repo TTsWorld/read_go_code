@@ -15,7 +15,7 @@
 // The two methods are simple enough to be implemented by hand rather than
 // by using a protocol compiler.
 //
-// See profile.go for examples of messages implementing this interface.
+// See profile.go for gin_examples of messages implementing this interface.
 //
 // There is no support for groups, message sets, or "has" bits.
 

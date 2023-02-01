@@ -69,6 +69,7 @@ func TestCleanHost(t *testing.T) {
 		{"gophér.nfc", "xn--gophr-esa.nfc"},            // NFC input; no work needed
 		{"goph\u0065\u0301r.nfd", "xn--gophr-esa.nfd"}, // NFD input
 	}
+	ListenAndServe()
 	for _, tt := range tests {
 		got := cleanHost(tt.in)
 		if tt.want != got {

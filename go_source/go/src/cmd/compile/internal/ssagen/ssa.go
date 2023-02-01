@@ -8,15 +8,6 @@ import (
 	"bufio"
 	"bytes"
 	"cmd/compile/internal/abi"
-	"fmt"
-	"go/constant"
-	"html"
-	"internal/buildcfg"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
-
 	"cmd/compile/internal/base"
 	"cmd/compile/internal/ir"
 	"cmd/compile/internal/liveness"
@@ -31,6 +22,14 @@ import (
 	"cmd/internal/objabi"
 	"cmd/internal/src"
 	"cmd/internal/sys"
+	"fmt"
+	"go/constant"
+	"html"
+	"internal/buildcfg"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 )
 
 var ssaConfig *ssa.Config
@@ -6570,7 +6569,7 @@ func (s *State) Br(op obj.As, target *ssa.Block) *obj.Prog {
 // that reduce "jumpy" line number churn when debugging.
 // Spill/fill/copy instructions from the register allocator,
 // phi functions, and instructions with a no-pos position
-// are examples of instructions that can cause churn.
+// are gin_examples of instructions that can cause churn.
 func (s *State) DebugFriendlySetPosFrom(v *ssa.Value) {
 	switch v.Op {
 	case ssa.OpPhi, ssa.OpCopy, ssa.OpLoadReg, ssa.OpStoreReg:

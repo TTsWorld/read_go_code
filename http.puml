@@ -1,0 +1,3093 @@
+@startuml
+namespace cgi {
+    class Handler << (S,Aquamarine) >> {
+        + Path string
+        + Root string
+        + Dir string
+        + Env []string
+        + InheritEnv []string
+        + Logger *log.Logger
+        + Args []string
+        + Stderr io.Writer
+        + PathLocationHandler http.Handler
+
+        - stderr() io.Writer
+        - printf(format string, v ...any) 
+        - handleInternalRedirect(rw http.ResponseWriter, req *http.Request, path string) 
+
+        + ServeHTTP(rw http.ResponseWriter, req *http.Request) 
+
+    }
+    class response << (S,Aquamarine) >> {
+        - req *http.Request
+        - header http.Header
+        - code int
+        - wroteHeader bool
+        - wroteCGIHeader bool
+        - bufw *bufio.Writer
+
+        - writeCGIHeader(p []byte) 
+
+        + Flush() 
+        + Header() http.Header
+        + Write(p []byte) (int, error)
+        + WriteHeader(code int) 
+
+    }
+}
+
+"http.Handler" <|-- "cgi.Handler"
+"http.Flusher" <|-- "cgi.response"
+"http.ResponseWriter" <|-- "cgi.response"
+
+namespace cookiejar {
+    class Jar << (S,Aquamarine) >> {
+        - psList PublicSuffixList
+        - mu sync.Mutex
+        - entries <font color=blue>map</font>[string]<font color=blue>map</font>[string]entry
+        - nextSeqNum uint64
+
+        - cookies(u *url.URL, now time.Time) []*http.Cookie
+        - setCookies(u *url.URL, cookies []*http.Cookie, now time.Time) 
+        - newEntry(c *http.Cookie, now time.Time, defPath string, host string) (entry, bool, error)
+        - domainAndType(host string, domain string) (string, bool, error)
+
+        + Cookies(u *url.URL) []*http.Cookie
+        + SetCookies(u *url.URL, cookies []*http.Cookie) 
+
+    }
+    class Options << (S,Aquamarine) >> {
+        + PublicSuffixList PublicSuffixList
+
+    }
+    interface PublicSuffixList  {
+        + PublicSuffix(domain string) string
+        + String() string
+
+    }
+    class entry << (S,Aquamarine) >> {
+        - seqNum uint64
+
+        + Name string
+        + Value string
+        + Domain string
+        + Path string
+        + SameSite string
+        + Secure bool
+        + HttpOnly bool
+        + Persistent bool
+        + HostOnly bool
+        + Expires time.Time
+        + Creation time.Time
+        + LastAccess time.Time
+
+        - id() string
+        - shouldSend(https bool, host string, path string) bool
+        - domainMatch(host string) bool
+        - pathMatch(requestPath string) bool
+
+    }
+}
+
+"http.CookieJar" <|-- "cookiejar.Jar"
+
+namespace fcgi {
+    class beginRequest << (S,Aquamarine) >> {
+        - role uint16
+        - flags uint8
+        - reserved []uint8
+
+        - read(content []byte) error
+
+    }
+    class bufWriter << (S,Aquamarine) >> {
+        - closer io.Closer
+
+        + Close() error
+
+    }
+    class child << (S,Aquamarine) >> {
+        - conn *conn
+        - handler http.Handler
+        - requests <font color=blue>map</font>[uint16]*request
+
+        - serve() 
+        - handleRecord(rec *record) error
+        - serveRequest(req *request, body io.ReadCloser) 
+        - cleanUp() 
+
+    }
+    class conn << (S,Aquamarine) >> {
+        - mutex sync.Mutex
+        - rwc io.ReadWriteCloser
+        - buf bytes.Buffer
+        - h header
+
+        - writeRecord(recType recType, reqId uint16, b []byte) error
+        - writeEndRequest(reqId uint16, appStatus int, protocolStatus uint8) error
+        - writePairs(recType recType, reqId uint16, pairs <font color=blue>map</font>[string]string) error
+
+        + Close() error
+
+    }
+    class envVarsContextKey << (S,Aquamarine) >> {
+    }
+    class fcgi.recType << (T, #FF7700) >>  {
+    }
+    class header << (S,Aquamarine) >> {
+        + Version uint8
+        + Type recType
+        + Id uint16
+        + ContentLength uint16
+        + PaddingLength uint8
+        + Reserved uint8
+
+        - init(recType recType, reqId uint16, contentLength int) 
+
+    }
+    class record << (S,Aquamarine) >> {
+        - h header
+        - buf []byte
+
+        - read(r io.Reader) error
+        - content() []byte
+
+    }
+    class request << (S,Aquamarine) >> {
+        - pw *io.PipeWriter
+        - reqId uint16
+        - params <font color=blue>map</font>[string]string
+        - buf []byte
+        - rawParams []byte
+        - keepConn bool
+
+        - parseParams() 
+
+    }
+    class response << (S,Aquamarine) >> {
+        - req *request
+        - header http.Header
+        - code int
+        - wroteHeader bool
+        - wroteCGIHeader bool
+        - w *bufWriter
+
+        - writeCGIHeader(p []byte) 
+
+        + Header() http.Header
+        + Write(p []byte) (int, error)
+        + WriteHeader(code int) 
+        + Flush() 
+        + Close() error
+
+    }
+    class streamWriter << (S,Aquamarine) >> {
+        - c *conn
+        - recType recType
+        - reqId uint16
+
+        + Write(p []byte) (int, error)
+        + Close() error
+
+    }
+}
+"bufio.Writer" *-- "fcgi.bufWriter"
+
+"http.Flusher" <|-- "fcgi.response"
+"http.ResponseWriter" <|-- "fcgi.response"
+
+namespace http {
+    class Client << (S,Aquamarine) >> {
+        + Transport RoundTripper
+        + CheckRedirect <font color=blue>func</font>(*Request, []*Request) error
+        + Jar CookieJar
+        + Timeout time.Duration
+
+        - send(req *Request, deadline time.Time) (*Response, <font color=blue>func</font>() bool, error)
+        - deadline() time.Time
+        - transport() RoundTripper
+        - checkRedirect(req *Request, via []*Request) error
+        - do(req *Request) (*Response, error)
+        - makeHeadersCopier(ireq *Request) <font color=blue>func</font>(*Request) 
+
+        + Get(url string) (*Response, error)
+        + Do(req *Request) (*Response, error)
+        + Post(url string, contentType string, body io.Reader) (*Response, error)
+        + PostForm(url string, data url.Values) (*Response, error)
+        + Head(url string) (*Response, error)
+        + CloseIdleConnections() 
+
+    }
+    interface CloseNotifier  {
+        + CloseNotify() <font color=blue>chan</font> bool
+
+    }
+    class ConnState << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class Cookie << (S,Aquamarine) >> {
+        + Name string
+        + Value string
+        + Path string
+        + Domain string
+        + Expires time.Time
+        + RawExpires string
+        + MaxAge int
+        + Secure bool
+        + HttpOnly bool
+        + SameSite SameSite
+        + Raw string
+        + Unparsed []string
+
+        + String() string
+        + Valid() error
+
+    }
+    interface CookieJar  {
+        + SetCookies(u *url.URL, cookies []*Cookie) 
+        + Cookies(u *url.URL) []*Cookie
+
+    }
+    class Dir << (S,Aquamarine) >> {
+        + Open(name string) (File, error)
+
+    }
+    interface File  {
+        + Readdir(count int) ([]fs.FileInfo, error)
+        + Stat() (fs.FileInfo, error)
+
+    }
+    interface FileSystem  {
+        + Open(name string) (File, error)
+
+    }
+    interface Flusher  {
+        + Flush() 
+
+    }
+    interface Handler  {
+        + ServeHTTP( ResponseWriter,  *Request) 
+
+    }
+    class HandlerFunc << (S,Aquamarine) >> {
+        + ServeHTTP(w ResponseWriter, r *Request) 
+
+    }
+    class Header << (S,Aquamarine) >> {
+        - get(key string) string
+        - has(key string) bool
+        - write(w io.Writer, trace *httptrace.ClientTrace) error
+        - sortedKeyValues(exclude <font color=blue>map</font>[string]bool) ([]keyValues, *headerSorter)
+        - writeSubset(w io.Writer, exclude <font color=blue>map</font>[string]bool, trace *httptrace.ClientTrace) error
+
+        + Add(key string, value string) 
+        + Set(key string, value string) 
+        + Get(key string) string
+        + Values(key string) []string
+        + Del(key string) 
+        + Write(w io.Writer) error
+        + Clone() Header
+        + WriteSubset(w io.Writer, exclude <font color=blue>map</font>[string]bool) error
+
+    }
+    interface Hijacker  {
+        + Hijack() (net.Conn, *bufio.ReadWriter, error)
+
+    }
+    class ProtocolError << (S,Aquamarine) >> {
+        + ErrorString string
+
+        + Error() string
+
+    }
+    class PushOptions << (S,Aquamarine) >> {
+        + Method string
+        + Header Header
+
+    }
+    interface Pusher  {
+        + Push(target string, opts *PushOptions) error
+
+    }
+    class Request << (S,Aquamarine) >> {
+        - ctx context.Context
+
+        + Method string
+        + URL *url.URL
+        + Proto string
+        + ProtoMajor int
+        + ProtoMinor int
+        + Header Header
+        + Body io.ReadCloser
+        + GetBody <font color=blue>func</font>() (io.ReadCloser, error)
+        + ContentLength int64
+        + TransferEncoding []string
+        + Close bool
+        + Host string
+        + Form url.Values
+        + PostForm url.Values
+        + MultipartForm *multipart.Form
+        + Trailer Header
+        + RemoteAddr string
+        + RequestURI string
+        + TLS *tls.ConnectionState
+        + Cancel <font color=blue>chan</font> <font color=blue>struct</font>{}
+        + Response *Response
+
+        - multipartReader(allowMixed bool) (*multipart.Reader, error)
+        - isH2Upgrade() bool
+        - write(w io.Writer, usingProxy bool, extraHeaders Header, waitForContinue <font color=blue>func</font>() bool) error
+        - expectsContinue() bool
+        - wantsHttp10KeepAlive() bool
+        - wantsClose() bool
+        - closeBody() error
+        - isReplayable() bool
+        - outgoingLength() int64
+        - requiresHTTP1() bool
+
+        + Context() context.Context
+        + WithContext(ctx context.Context) *Request
+        + Clone(ctx context.Context) *Request
+        + ProtoAtLeast(major int, minor int) bool
+        + UserAgent() string
+        + Cookies() []*Cookie
+        + Cookie(name string) (*Cookie, error)
+        + AddCookie(c *Cookie) 
+        + Referer() string
+        + MultipartReader() (*multipart.Reader, error)
+        + Write(w io.Writer) error
+        + WriteProxy(w io.Writer) error
+        + BasicAuth() (string, string, bool)
+        + SetBasicAuth(username string, password string) 
+        + ParseForm() error
+        + ParseMultipartForm(maxMemory int64) error
+        + FormValue(key string) string
+        + PostFormValue(key string) string
+        + FormFile(key string) (multipart.File, *multipart.FileHeader, error)
+
+    }
+    class Response << (S,Aquamarine) >> {
+        + Status string
+        + StatusCode int
+        + Proto string
+        + ProtoMajor int
+        + ProtoMinor int
+        + Header Header
+        + Body io.ReadCloser
+        + ContentLength int64
+        + TransferEncoding []string
+        + Close bool
+        + Uncompressed bool
+        + Trailer Header
+        + Request *Request
+        + TLS *tls.ConnectionState
+
+        - closeBody() 
+        - bodyIsWritable() bool
+        - isProtocolSwitch() bool
+
+        + Cookies() []*Cookie
+        + Location() (*url.URL, error)
+        + ProtoAtLeast(major int, minor int) bool
+        + Write(w io.Writer) error
+
+    }
+    interface ResponseWriter  {
+        + Header() Header
+        + Write( []byte) (int, error)
+        + WriteHeader(statusCode int) 
+
+    }
+    interface RoundTripper  {
+        + RoundTrip( *Request) (*Response, error)
+
+    }
+    class ServeMux << (S,Aquamarine) >> {
+        - mu sync.RWMutex
+        - m <font color=blue>map</font>[string]muxEntry
+        - es []muxEntry
+        - hosts bool
+
+        - match(path string) (Handler, string)
+        - redirectToPathSlash(host string, path string, u *url.URL) (*url.URL, bool)
+        - shouldRedirectRLocked(host string, path string) bool
+        - handler(host string, path string) (Handler, string)
+
+        + Handler(r *Request) (Handler, string)
+        + ServeHTTP(w ResponseWriter, r *Request) 
+        + Handle(pattern string, handler Handler) 
+        + HandleFunc(pattern string, handler <font color=blue>func</font>(ResponseWriter, *Request) ) 
+
+    }
+    class Server << (S,Aquamarine) >> {
+        - inShutdown atomicBool
+        - disableKeepAlives int32
+        - nextProtoOnce sync.Once
+        - nextProtoErr error
+        - mu sync.Mutex
+        - listeners <font color=blue>map</font>[*net.Listener]<font color=blue>struct</font>{}
+        - activeConn <font color=blue>map</font>[*conn]<font color=blue>struct</font>{}
+        - doneChan <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - onShutdown []<font color=blue>func</font>() 
+
+        + Addr string
+        + Handler Handler
+        + TLSConfig *tls.Config
+        + ReadTimeout time.Duration
+        + ReadHeaderTimeout time.Duration
+        + WriteTimeout time.Duration
+        + IdleTimeout time.Duration
+        + MaxHeaderBytes int
+        + TLSNextProto <font color=blue>map</font>[string]<font color=blue>func</font>(*Server, *tls.Conn, Handler) 
+        + ConnState <font color=blue>func</font>(net.Conn, ConnState) 
+        + ErrorLog *log.Logger
+        + BaseContext <font color=blue>func</font>(net.Listener) context.Context
+        + ConnContext <font color=blue>func</font>(context.Context, net.Conn) context.Context
+
+        - newConn(rwc net.Conn) *conn
+        - maxHeaderBytes() int
+        - initialReadLimitSize() int64
+        - tlsHandshakeTimeout() time.Duration
+        - getDoneChan() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - getDoneChanLocked() <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - closeDoneChanLocked() 
+        - numListeners() int
+        - closeIdleConns() bool
+        - closeListenersLocked() error
+        - shouldConfigureHTTP2ForServe() bool
+        - trackListener(ln *net.Listener, add bool) bool
+        - trackConn(c *conn, add bool) 
+        - idleTimeout() time.Duration
+        - readHeaderTimeout() time.Duration
+        - doKeepAlives() bool
+        - shuttingDown() bool
+        - logf(format string, args ...any) 
+        - setupHTTP2_ServeTLS() error
+        - setupHTTP2_Serve() error
+        - onceSetNextProtoDefaults_Serve() 
+        - onceSetNextProtoDefaults() 
+
+        + Close() error
+        + Shutdown(ctx context.Context) error
+        + RegisterOnShutdown(f <font color=blue>func</font>() ) 
+        + ListenAndServe() error
+        + Serve(l net.Listener) error
+        + ServeTLS(l net.Listener, certFile string, keyFile string) error
+        + SetKeepAlivesEnabled(v bool) 
+        + ListenAndServeTLS(certFile string, keyFile string) error
+
+    }
+    class Transport << (S,Aquamarine) >> {
+        - idleMu sync.Mutex
+        - closeIdle bool
+        - idleConn <font color=blue>map</font>[connectMethodKey][]*persistConn
+        - idleConnWait <font color=blue>map</font>[connectMethodKey]wantConnQueue
+        - idleLRU connLRU
+        - reqMu sync.Mutex
+        - reqCanceler <font color=blue>map</font>[cancelKey]<font color=blue>func</font>(error) 
+        - altMu sync.Mutex
+        - altProto atomic.Value
+        - connsPerHostMu sync.Mutex
+        - connsPerHost <font color=blue>map</font>[connectMethodKey]int
+        - connsPerHostWait <font color=blue>map</font>[connectMethodKey]wantConnQueue
+        - nextProtoOnce sync.Once
+        - h2transport h2Transport
+        - tlsNextProtoWasNil bool
+
+        + Proxy <font color=blue>func</font>(*Request) (*url.URL, error)
+        + DialContext <font color=blue>func</font>(context.Context, string, string) (net.Conn, error)
+        + Dial <font color=blue>func</font>(string, string) (net.Conn, error)
+        + DialTLSContext <font color=blue>func</font>(context.Context, string, string) (net.Conn, error)
+        + DialTLS <font color=blue>func</font>(string, string) (net.Conn, error)
+        + TLSClientConfig *tls.Config
+        + TLSHandshakeTimeout time.Duration
+        + DisableKeepAlives bool
+        + DisableCompression bool
+        + MaxIdleConns int
+        + MaxIdleConnsPerHost int
+        + MaxConnsPerHost int
+        + IdleConnTimeout time.Duration
+        + ResponseHeaderTimeout time.Duration
+        + ExpectContinueTimeout time.Duration
+        + TLSNextProto <font color=blue>map</font>[string]<font color=blue>func</font>(string, *tls.Conn) RoundTripper
+        + ProxyConnectHeader Header
+        + GetProxyConnectHeader <font color=blue>func</font>(context.Context, *url.URL, string) (Header, error)
+        + MaxResponseHeaderBytes int64
+        + WriteBufferSize int
+        + ReadBufferSize int
+        + ForceAttemptHTTP2 bool
+
+        - writeBufferSize() int
+        - readBufferSize() int
+        - hasCustomTLSDialer() bool
+        - onceSetNextProtoDefaults() 
+        - useRegisteredProtocol(req *Request) bool
+        - alternateRoundTripper(req *Request) RoundTripper
+        - roundTrip(req *Request) (*Response, error)
+        - cancelRequest(key cancelKey, err error) bool
+        - connectMethodForRequest(treq *transportRequest) (connectMethod, error)
+        - putOrCloseIdleConn(pconn *persistConn) 
+        - maxIdleConnsPerHost() int
+        - tryPutIdleConn(pconn *persistConn) error
+        - queueForIdleConn(w *wantConn) bool
+        - removeIdleConn(pconn *persistConn) bool
+        - removeIdleConnLocked(pconn *persistConn) bool
+        - setReqCanceler(key cancelKey, fn <font color=blue>func</font>(error) ) 
+        - replaceReqCanceler(key cancelKey, fn <font color=blue>func</font>(error) ) bool
+        - dial(ctx context.Context, network string, addr string) (net.Conn, error)
+        - customDialTLS(ctx context.Context, network string, addr string) (net.Conn, error)
+        - getConn(treq *transportRequest, cm connectMethod) (*persistConn, error)
+        - queueForDial(w *wantConn) 
+        - dialConnFor(w *wantConn) 
+        - decConnsPerHost(key connectMethodKey) 
+        - dialConn(ctx context.Context, cm connectMethod) (*persistConn, error)
+
+        + RoundTrip(req *Request) (*Response, error)
+        + RoundTrip(req *Request) (*Response, error)
+        + Clone() *Transport
+        + RegisterProtocol(scheme string, rt RoundTripper) 
+        + CloseIdleConnections() 
+        + CancelRequest(req *Request) 
+
+    }
+    interface anyDirs  {
+        - len() int
+        - name(i int) string
+        - isDir(i int) bool
+
+    }
+    class arrayReader << (S,Aquamarine) >> {
+        - arrayPromise js.Value
+        - pending []byte
+        - read bool
+        - err error
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class atomicBool << (S,Aquamarine) >> {
+        - isSet() bool
+        - setTrue() 
+        - setFalse() 
+
+    }
+    class body << (S,Aquamarine) >> {
+        - src io.Reader
+        - hdr any
+        - r *bufio.Reader
+        - closing bool
+        - doEarlyClose bool
+        - mu sync.Mutex
+        - sawEOF bool
+        - closed bool
+        - earlyClose bool
+        - onHitEOF <font color=blue>func</font>() 
+
+        - readLocked(p []byte) (int, error)
+        - readTrailer() error
+        - unreadDataSizeLocked() int64
+        - didEarlyClose() bool
+        - bodyRemains() bool
+        - registerOnHitEOF(fn <font color=blue>func</font>() ) 
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class bodyEOFSignal << (S,Aquamarine) >> {
+        - body io.ReadCloser
+        - mu sync.Mutex
+        - closed bool
+        - rerr error
+        - fn <font color=blue>func</font>(error) error
+        - earlyCloseFn <font color=blue>func</font>() error
+
+        - condfn(err error) error
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class bodyLocked << (S,Aquamarine) >> {
+        - b *body
+
+        + Read(p []byte) (int, error)
+
+    }
+    class bufioFlushWriter << (S,Aquamarine) >> {
+        - w io.Writer
+
+        + Write(p []byte) (int, error)
+
+    }
+    class byteReader << (S,Aquamarine) >> {
+        - b byte
+        - done bool
+
+        + Read(p []byte) (int, error)
+
+    }
+    class cancelKey << (S,Aquamarine) >> {
+        - req *Request
+
+    }
+    class cancelTimerBody << (S,Aquamarine) >> {
+        - stop <font color=blue>func</font>() 
+        - rc io.ReadCloser
+        - reqDidTimeout <font color=blue>func</font>() bool
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class checkConnErrorWriter << (S,Aquamarine) >> {
+        - c *conn
+
+        + Write(p []byte) (int, error)
+
+    }
+    class chunkWriter << (S,Aquamarine) >> {
+        - res *response
+        - header Header
+        - wroteHeader bool
+        - chunking bool
+
+        - flush() 
+        - close() 
+        - writeHeader(p []byte) 
+
+        + Write(p []byte) (int, error)
+
+    }
+    interface closeWriter  {
+        + CloseWrite() error
+
+    }
+    class conn << (S,Aquamarine) >> {
+        - server *Server
+        - cancelCtx context.CancelFunc
+        - rwc net.Conn
+        - remoteAddr string
+        - tlsState *tls.ConnectionState
+        - werr error
+        - r *connReader
+        - bufr *bufio.Reader
+        - bufw *bufio.Writer
+        - lastMethod string
+        - curReq atomic.Value
+        - curState <font color=blue>struct</font>{uint64}
+        - mu sync.Mutex
+        - hijackedv bool
+
+        - hijacked() bool
+        - hijackLocked() (net.Conn, *bufio.ReadWriter, error)
+        - readRequest(ctx context.Context) (*response, error)
+        - finalFlush() 
+        - close() 
+        - closeWriteAndWait() 
+        - setState(nc net.Conn, state ConnState, runHook bool) 
+        - getState() (ConnState, int64)
+        - serve(ctx context.Context) 
+
+    }
+    class connLRU << (S,Aquamarine) >> {
+        - ll *list.List
+        - m <font color=blue>map</font>[*persistConn]*list.Element
+
+        - add(pc *persistConn) 
+        - removeOldest() *persistConn
+        - remove(pc *persistConn) 
+        - len() int
+
+    }
+    class connReader << (S,Aquamarine) >> {
+        - conn *conn
+        - mu sync.Mutex
+        - hasByte bool
+        - byteBuf []byte
+        - cond *sync.Cond
+        - inRead bool
+        - aborted bool
+        - remain int64
+
+        - lock() 
+        - unlock() 
+        - startBackgroundRead() 
+        - backgroundRead() 
+        - abortPendingRead() 
+        - setReadLimit(remain int64) 
+        - setInfiniteReadLimit() 
+        - hitReadLimit() bool
+        - handleReadError(_ error) 
+        - closeNotify() 
+
+        + Read(p []byte) (int, error)
+
+    }
+    class connectMethod << (S,Aquamarine) >> {
+        - proxyURL *url.URL
+        - targetScheme string
+        - targetAddr string
+        - onlyH1 bool
+
+        + _ incomparable
+
+        - proxyAuth() string
+        - key() connectMethodKey
+        - scheme() string
+        - addr() string
+        - tlsHost() string
+
+    }
+    class connectMethodKey << (S,Aquamarine) >> {
+        - proxy string
+        - onlyH1 bool
+
+        + String() string
+
+    }
+    class contextKey << (S,Aquamarine) >> {
+        - name string
+
+        + String() string
+
+    }
+    class countingWriter << (S,Aquamarine) >> {
+        + Write(p []byte) (int, error)
+
+    }
+    class dirEntryDirs << (S,Aquamarine) >> {
+        - len() int
+        - isDir(i int) bool
+        - name(i int) string
+
+    }
+    interface erringRoundTripper  {
+        + RoundTripErr() error
+
+    }
+    class errorReader << (S,Aquamarine) >> {
+        - err error
+
+        + Read(p []byte) (int, error)
+
+    }
+    class exactSig << (S,Aquamarine) >> {
+        - sig []byte
+        - ct string
+
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class expectContinueReader << (S,Aquamarine) >> {
+        - resp *response
+        - readCloser io.ReadCloser
+        - closed atomicBool
+        - sawEOF atomicBool
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class extraHeader << (S,Aquamarine) >> {
+        - contentType string
+        - connection string
+        - transferEncoding string
+        - date []byte
+        - contentLength []byte
+
+        + Write(w *bufio.Writer) 
+
+    }
+    class fakeLocker << (S,Aquamarine) >> {
+        + Lock() 
+        + Unlock() 
+
+    }
+    class fileHandler << (S,Aquamarine) >> {
+        - root FileSystem
+
+        + ServeHTTP(w ResponseWriter, r *Request) 
+
+    }
+    class fileInfoDirs << (S,Aquamarine) >> {
+        - len() int
+        - isDir(i int) bool
+        - name(i int) string
+
+    }
+    class fileTransport << (S,Aquamarine) >> {
+        - fh fileHandler
+
+        + RoundTrip(req *Request) (*Response, error)
+
+    }
+    class finishAsyncByteRead << (S,Aquamarine) >> {
+        - tw *transferWriter
+
+        + Read(p []byte) (int, error)
+
+    }
+    class globalOptionsHandler << (S,Aquamarine) >> {
+        + ServeHTTP(w ResponseWriter, r *Request) 
+
+    }
+    class gzipReader << (S,Aquamarine) >> {
+        - body *bodyEOFSignal
+        - zr *gzip.Reader
+        - zerr error
+
+        + _ incomparable
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    interface h2Transport  {
+        + CloseIdleConnections() 
+
+    }
+    class headerSorter << (S,Aquamarine) >> {
+        - kvs []keyValues
+
+        + Len() int
+        + Swap(i int, j int) 
+        + Less(i int, j int) bool
+
+    }
+    class htmlSig << (S,Aquamarine) >> {
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class http.ConnState << (T, #FF7700) >>  {
+    }
+    class http.Dir << (T, #FF7700) >>  {
+    }
+    class http.HandlerFunc << (T, #FF7700) >>  {
+    }
+    class http.Header << (T, #FF7700) >>  {
+    }
+    class http.SameSite << (T, #FF7700) >>  {
+    }
+    class http.atomicBool << (T, #FF7700) >>  {
+    }
+    class http.condResult << (T, #FF7700) >>  {
+    }
+    class http.countingWriter << (T, #FF7700) >>  {
+    }
+    class http.dirEntryDirs << (T, #FF7700) >>  {
+    }
+    class http.fileInfoDirs << (T, #FF7700) >>  {
+    }
+    class http.htmlSig << (T, #FF7700) >>  {
+    }
+    class http.http2ConnectionError << (T, #FF7700) >>  {
+    }
+    class http.http2ErrCode << (T, #FF7700) >>  {
+    }
+    class http.http2Flags << (T, #FF7700) >>  {
+    }
+    class http.http2FrameType << (T, #FF7700) >>  {
+    }
+    class http.http2SettingID << (T, #FF7700) >>  {
+    }
+    class http.http2WriteScheduler << (T, #FF7700) >>  {
+    }
+    class http.http2closeWaiter << (T, #FF7700) >>  {
+    }
+    class http.http2duplicatePseudoHeaderError << (T, #FF7700) >>  {
+    }
+    class http.http2frameParser << (T, #FF7700) >>  {
+    }
+    class http.http2gate << (T, #FF7700) >>  {
+    }
+    class http.http2goroutineLock << (T, #FF7700) >>  {
+    }
+    class http.http2headerFieldNameError << (T, #FF7700) >>  {
+    }
+    class http.http2headerFieldValueError << (T, #FF7700) >>  {
+    }
+    class http.http2incomparable << (T, #FF7700) >>  {
+    }
+    class http.http2priorityNodeState << (T, #FF7700) >>  {
+    }
+    class http.http2pseudoHeaderError << (T, #FF7700) >>  {
+    }
+    class http.http2serverMessage << (T, #FF7700) >>  {
+    }
+    class http.http2sortPriorityNodeSiblings << (T, #FF7700) >>  {
+    }
+    class http.http2streamState << (T, #FF7700) >>  {
+    }
+    class http.http2writeQueuePool << (T, #FF7700) >>  {
+    }
+    class http.http2writeSettings << (T, #FF7700) >>  {
+    }
+    class http.incomparable << (T, #FF7700) >>  {
+    }
+    class http.socksAuthMethod << (T, #FF7700) >>  {
+    }
+    class http.socksCommand << (T, #FF7700) >>  {
+    }
+    class http.socksReply << (T, #FF7700) >>  {
+    }
+    class http2ClientConn << (S,Aquamarine) >> {
+        - t *http2Transport
+        - tconn net.Conn
+        - tlsState *tls.ConnectionState
+        - reused uint32
+        - singleUse bool
+        - getConnCalled bool
+        - readerDone <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - readerErr error
+        - idleTimeout time.Duration
+        - idleTimer *time.Timer
+        - mu sync.Mutex
+        - cond *sync.Cond
+        - flow http2flow
+        - inflow http2flow
+        - doNotReuse bool
+        - closing bool
+        - closed bool
+        - seenSettings bool
+        - wantSettingsAck bool
+        - goAway *http2GoAwayFrame
+        - goAwayDebug string
+        - streams <font color=blue>map</font>[uint32]*http2clientStream
+        - streamsReserved int
+        - nextStreamID uint32
+        - pendingRequests int
+        - pings <font color=blue>map</font>[[]byte]<font color=blue>chan</font> <font color=blue>struct</font>{}
+        - br *bufio.Reader
+        - lastActive time.Time
+        - lastIdle time.Time
+        - maxFrameSize uint32
+        - maxConcurrentStreams uint32
+        - peerMaxHeaderListSize uint64
+        - initialWindowSize uint32
+        - reqHeaderMu <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - wmu sync.Mutex
+        - bw *bufio.Writer
+        - fr *http2Framer
+        - werr error
+        - hbuf bytes.Buffer
+        - henc *hpack.Encoder
+
+        - healthCheck() 
+        - setGoAway(f *http2GoAwayFrame) 
+        - idleState() http2clientConnIdleState
+        - idleStateLocked() http2clientConnIdleState
+        - canTakeNewRequestLocked() bool
+        - tooIdleLocked() bool
+        - onIdleTimeout() 
+        - closeIfIdle() 
+        - isDoNotReuseAndIdle() bool
+        - sendGoAway() error
+        - closeForError(err error) error
+        - closeForLostPing() error
+        - responseHeaderTimeout() time.Duration
+        - decrStreamReservations() 
+        - decrStreamReservationsLocked() 
+        - awaitOpenSlotForStreamLocked(cs *http2clientStream) error
+        - writeHeaders(streamID uint32, endStream bool, maxFrameSize int, hdrs []byte) error
+        - encodeHeaders(req *Request, addGzipHeader bool, trailers string, contentLength int64) ([]byte, error)
+        - encodeTrailers(trailer Header) ([]byte, error)
+        - writeHeader(name string, value string) 
+        - addStreamLocked(cs *http2clientStream) 
+        - forgetStreamID(id uint32) 
+        - readLoop() 
+        - countReadFrameError(err error) 
+        - writeStreamReset(streamID uint32, code http2ErrCode, err error) 
+        - logf(format string, args ...<font color=blue>interface</font>{}) 
+        - vlogf(format string, args ...<font color=blue>interface</font>{}) 
+
+        + SetDoNotReuse() 
+        + CanTakeNewRequest() bool
+        + ReserveNewRequest() bool
+        + State() http2ClientConnState
+        + Shutdown(ctx context.Context) error
+        + Close() error
+        + RoundTrip(req *Request) (*Response, error)
+        + Ping(ctx context.Context) error
+
+    }
+    interface http2ClientConnPool  {
+        + GetClientConn(req *Request, addr string) (*http2ClientConn, error)
+        + MarkDead( *http2ClientConn) 
+
+    }
+    class http2ClientConnState << (S,Aquamarine) >> {
+        + Closed bool
+        + Closing bool
+        + StreamsActive int
+        + StreamsReserved int
+        + StreamsPending int
+        + MaxConcurrentStreams uint32
+        + LastIdle time.Time
+
+    }
+    class http2ConnectionError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    class http2ContinuationFrame << (S,Aquamarine) >> {
+        - headerFragBuf []byte
+
+        + HeaderBlockFragment() []byte
+        + HeadersEnded() bool
+
+    }
+    class http2DataFrame << (S,Aquamarine) >> {
+        - data []byte
+
+        + StreamEnded() bool
+        + Data() []byte
+
+    }
+    class http2ErrCode << (S,Aquamarine) >> {
+        - stringToken() string
+
+        + String() string
+
+    }
+    class http2Flags << (S,Aquamarine) >> {
+        + Has(v http2Flags) bool
+
+    }
+    interface http2Frame  {
+        - invalidate() 
+
+        + Header() http2FrameHeader
+
+    }
+    class http2FrameHeader << (S,Aquamarine) >> {
+        - valid bool
+
+        + Type http2FrameType
+        + Flags http2Flags
+        + Length uint32
+        + StreamID uint32
+
+        - writeDebug(buf *bytes.Buffer) 
+        - checkValid() 
+        - invalidate() 
+
+        + Header() http2FrameHeader
+        + String() string
+
+    }
+    class http2FrameType << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class http2FrameWriteRequest << (S,Aquamarine) >> {
+        - write http2writeFramer
+        - stream *http2stream
+        - done <font color=blue>chan</font> error
+
+        - isControl() bool
+        - replyToWriter(err error) 
+
+        + StreamID() uint32
+        + DataSize() int
+        + Consume(n int32) (http2FrameWriteRequest, http2FrameWriteRequest, int)
+        + String() string
+
+    }
+    class http2Framer << (S,Aquamarine) >> {
+        - r io.Reader
+        - lastFrame http2Frame
+        - errDetail error
+        - countError <font color=blue>func</font>(string) 
+        - lastHeaderStream uint32
+        - maxReadSize uint32
+        - headerBuf []byte
+        - getReadBuf <font color=blue>func</font>(uint32) []byte
+        - readBuf []byte
+        - maxWriteSize uint32
+        - w io.Writer
+        - wbuf []byte
+        - logReads bool
+        - debugFramer *http2Framer
+        - debugFramerBuf *bytes.Buffer
+        - debugReadLoggerf <font color=blue>func</font>(string, ...<font color=blue>interface</font>{}) 
+        - debugWriteLoggerf <font color=blue>func</font>(string, ...<font color=blue>interface</font>{}) 
+        - frameCache *http2frameCache
+
+        + AllowIllegalWrites bool
+        + AllowIllegalReads bool
+        + ReadMetaHeaders *hpack.Decoder
+        + MaxHeaderListSize uint32
+
+        - maxHeaderListSize() uint32
+        - startWrite(ftype http2FrameType, flags http2Flags, streamID uint32) 
+        - endWrite() error
+        - logWrite() 
+        - writeByte(v byte) 
+        - writeBytes(v []byte) 
+        - writeUint16(v uint16) 
+        - writeUint32(v uint32) 
+        - connError(code http2ErrCode, reason string) error
+        - checkFrameOrder(f http2Frame) error
+        - maxHeaderStringLen() int
+        - readMetaFrame(hf *http2HeadersFrame) (*http2MetaHeadersFrame, error)
+
+        + SetReuseFrames() 
+        + SetMaxReadFrameSize(v uint32) 
+        + ErrorDetail() error
+        + ReadFrame() (http2Frame, error)
+        + WriteData(streamID uint32, endStream bool, data []byte) error
+        + WriteDataPadded(streamID uint32, endStream bool, data []byte, pad []byte) error
+        + WriteSettings(settings ...http2Setting) error
+        + WriteSettingsAck() error
+        + WritePing(ack bool, data []byte) error
+        + WriteGoAway(maxStreamID uint32, code http2ErrCode, debugData []byte) error
+        + WriteWindowUpdate(streamID uint32, incr uint32) error
+        + WriteHeaders(p http2HeadersFrameParam) error
+        + WritePriority(streamID uint32, p http2PriorityParam) error
+        + WriteRSTStream(streamID uint32, code http2ErrCode) error
+        + WriteContinuation(streamID uint32, endHeaders bool, headerBlockFragment []byte) error
+        + WritePushPromise(p http2PushPromiseParam) error
+        + WriteRawFrame(t http2FrameType, flags http2Flags, streamID uint32, payload []byte) error
+
+    }
+    class http2GoAwayError << (S,Aquamarine) >> {
+        + LastStreamID uint32
+        + ErrCode http2ErrCode
+        + DebugData string
+
+        + Error() string
+
+    }
+    class http2GoAwayFrame << (S,Aquamarine) >> {
+        - debugData []byte
+
+        + LastStreamID uint32
+        + ErrCode http2ErrCode
+
+        + DebugData() []byte
+
+    }
+    class http2HeadersFrame << (S,Aquamarine) >> {
+        - headerFragBuf []byte
+
+        + Priority http2PriorityParam
+
+        + HeaderBlockFragment() []byte
+        + HeadersEnded() bool
+        + StreamEnded() bool
+        + HasPriority() bool
+
+    }
+    class http2HeadersFrameParam << (S,Aquamarine) >> {
+        + StreamID uint32
+        + BlockFragment []byte
+        + EndStream bool
+        + EndHeaders bool
+        + PadLength uint8
+        + Priority http2PriorityParam
+
+    }
+    class http2MetaHeadersFrame << (S,Aquamarine) >> {
+        + Fields []hpack.HeaderField
+        + Truncated bool
+
+        - checkPseudos() error
+
+        + PseudoValue(pseudo string) string
+        + RegularFields() []hpack.HeaderField
+        + PseudoFields() []hpack.HeaderField
+
+    }
+    class http2OpenStreamOptions << (S,Aquamarine) >> {
+        + PusherID uint32
+
+    }
+    class http2PingFrame << (S,Aquamarine) >> {
+        + Data []byte
+
+        + IsAck() bool
+
+    }
+    class http2PriorityFrame << (S,Aquamarine) >> {
+    }
+    class http2PriorityParam << (S,Aquamarine) >> {
+        + StreamDep uint32
+        + Exclusive bool
+        + Weight uint8
+
+        + IsZero() bool
+
+    }
+    class http2PriorityWriteSchedulerConfig << (S,Aquamarine) >> {
+        + MaxClosedNodesInTree int
+        + MaxIdleNodesInTree int
+        + ThrottleOutOfOrderWrites bool
+
+    }
+    class http2PushPromiseFrame << (S,Aquamarine) >> {
+        - headerFragBuf []byte
+
+        + PromiseID uint32
+
+        + HeaderBlockFragment() []byte
+        + HeadersEnded() bool
+
+    }
+    class http2PushPromiseParam << (S,Aquamarine) >> {
+        + StreamID uint32
+        + PromiseID uint32
+        + BlockFragment []byte
+        + EndHeaders bool
+        + PadLength uint8
+
+    }
+    class http2RSTStreamFrame << (S,Aquamarine) >> {
+        + ErrCode http2ErrCode
+
+    }
+    class http2RoundTripOpt << (S,Aquamarine) >> {
+        + OnlyCachedConn bool
+
+    }
+    class http2ServeConnOpts << (S,Aquamarine) >> {
+        + Context context.Context
+        + BaseConfig *Server
+        + Handler Handler
+
+        - context() context.Context
+        - baseConfig() *Server
+        - handler() Handler
+
+    }
+    class http2Server << (S,Aquamarine) >> {
+        - state *http2serverInternalState
+
+        + MaxHandlers int
+        + MaxConcurrentStreams uint32
+        + MaxReadFrameSize uint32
+        + PermitProhibitedCipherSuites bool
+        + IdleTimeout time.Duration
+        + MaxUploadBufferPerConnection int32
+        + MaxUploadBufferPerStream int32
+        + NewWriteScheduler <font color=blue>func</font>() http2WriteScheduler
+        + CountError <font color=blue>func</font>(string) 
+        + NewWriteScheduler <font color=blue>func</font>() http2WriteScheduler
+
+        - initialConnRecvWindowSize() int32
+        - initialStreamRecvWindowSize() int32
+        - maxReadFrameSize() uint32
+        - maxConcurrentStreams() uint32
+        - maxQueuedControlFrames() int
+
+        + ServeConn(c net.Conn, opts *http2ServeConnOpts) 
+
+    }
+    class http2Setting << (S,Aquamarine) >> {
+        + ID http2SettingID
+        + Val uint32
+
+        + String() string
+        + Valid() error
+
+    }
+    class http2SettingID << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class http2SettingsFrame << (S,Aquamarine) >> {
+        - p []byte
+
+        + IsAck() bool
+        + Value(id http2SettingID) (uint32, bool)
+        + Setting(i int) http2Setting
+        + NumSettings() int
+        + HasDuplicates() bool
+        + ForeachSetting(fn <font color=blue>func</font>(http2Setting) error) error
+
+    }
+    class http2StreamError << (S,Aquamarine) >> {
+        + StreamID uint32
+        + Code http2ErrCode
+        + Cause error
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+        + Error() string
+
+    }
+    class http2Transport << (S,Aquamarine) >> {
+        - t1 *Transport
+        - connPoolOnce sync.Once
+        - connPoolOrDef http2ClientConnPool
+
+        + DialTLS <font color=blue>func</font>(string, string, *tls.Config) (net.Conn, error)
+        + TLSClientConfig *tls.Config
+        + ConnPool http2ClientConnPool
+        + DisableCompression bool
+        + AllowHTTP bool
+        + MaxHeaderListSize uint32
+        + StrictMaxConcurrentStreams bool
+        + ReadIdleTimeout time.Duration
+        + PingTimeout time.Duration
+        + WriteByteTimeout time.Duration
+        + CountError <font color=blue>func</font>(string) 
+        + MaxHeaderListSize uint32
+        + ConnPool any
+
+        - dialTLSWithContext(ctx context.Context, network string, addr string, cfg *tls.Config) (*tls.Conn, error)
+        - maxHeaderListSize() uint32
+        - disableCompression() bool
+        - pingTimeout() time.Duration
+        - connPool() http2ClientConnPool
+        - initConnPool() 
+        - dialClientConn(ctx context.Context, addr string, singleUse bool) (*http2ClientConn, error)
+        - newTLSConfig(host string) *tls.Config
+        - dialTLS(ctx context.Context) <font color=blue>func</font>(string, string, *tls.Config) (net.Conn, error)
+        - disableKeepAlives() bool
+        - expectContinueTimeout() time.Duration
+        - newClientConn(c net.Conn, singleUse bool) (*http2ClientConn, error)
+        - vlogf(format string, args ...<font color=blue>interface</font>{}) 
+        - logf(format string, args ...<font color=blue>interface</font>{}) 
+        - idleConnTimeout() time.Duration
+
+        + RoundTrip(req *Request) (*Response, error)
+        + RoundTripOpt(req *Request, opt http2RoundTripOpt) (*Response, error)
+        + CloseIdleConnections() 
+        + NewClientConn(c net.Conn) (*http2ClientConn, error)
+        + RoundTrip( *Request) (*Response, error)
+        + CloseIdleConnections() 
+
+    }
+    class http2UnknownFrame << (S,Aquamarine) >> {
+        - p []byte
+
+        + Payload() []byte
+
+    }
+    class http2WindowUpdateFrame << (S,Aquamarine) >> {
+        + Increment uint32
+
+    }
+    interface http2WriteScheduler  {
+        + OpenStream(streamID uint32, options http2OpenStreamOptions) 
+        + CloseStream(streamID uint32) 
+        + AdjustStream(streamID uint32, priority http2PriorityParam) 
+        + Push(wr http2FrameWriteRequest) 
+        + Pop() (http2FrameWriteRequest, bool)
+
+    }
+    class http2addConnCall << (S,Aquamarine) >> {
+        - p *http2clientConnPool
+        - done <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - err error
+
+        + _ http2incomparable
+
+        - run(t *http2Transport, key string, tc *tls.Conn) 
+
+    }
+    class http2bodyReadMsg << (S,Aquamarine) >> {
+        - st *http2stream
+        - n int
+
+    }
+    class http2bufferedWriter << (S,Aquamarine) >> {
+        - w io.Writer
+        - bw *bufio.Writer
+
+        + _ http2incomparable
+
+        + Available() int
+        + Write(p []byte) (int, error)
+        + Flush() error
+
+    }
+    class http2chunkWriter << (S,Aquamarine) >> {
+        - rws *http2responseWriterState
+
+        + Write(p []byte) (int, error)
+
+    }
+    class http2clientConnIdleState << (S,Aquamarine) >> {
+        - canTakeNewRequest bool
+
+    }
+    class http2clientConnPool << (S,Aquamarine) >> {
+        - t *http2Transport
+        - mu sync.Mutex
+        - conns <font color=blue>map</font>[string][]*http2ClientConn
+        - dialing <font color=blue>map</font>[string]*http2dialCall
+        - keys <font color=blue>map</font>[*http2ClientConn][]string
+        - addConnCalls <font color=blue>map</font>[string]*http2addConnCall
+        - mu *sync.Mutex
+        - conns <font color=blue>map</font>[string][]<font color=blue>struct</font>{}
+
+        - getClientConn(req *Request, addr string, dialOnMiss bool) (*http2ClientConn, error)
+        - getStartDialLocked(ctx context.Context, addr string) *http2dialCall
+        - addConnIfNeeded(key string, t *http2Transport, c *tls.Conn) (bool, error)
+        - addConnLocked(key string, cc *http2ClientConn) 
+        - closeIdleConnections() 
+
+        + GetClientConn(req *Request, addr string) (*http2ClientConn, error)
+        + MarkDead(cc *http2ClientConn) 
+
+    }
+    interface http2clientConnPoolIdleCloser  {
+        - closeIdleConnections() 
+
+    }
+    class http2clientConnReadLoop << (S,Aquamarine) >> {
+        - cc *http2ClientConn
+
+        + _ http2incomparable
+
+        - cleanup() 
+        - run() error
+        - processHeaders(f *http2MetaHeadersFrame) error
+        - handleResponse(cs *http2clientStream, f *http2MetaHeadersFrame) (*Response, error)
+        - processTrailers(cs *http2clientStream, f *http2MetaHeadersFrame) error
+        - processData(f *http2DataFrame) error
+        - endStream(cs *http2clientStream) 
+        - endStreamError(cs *http2clientStream, err error) 
+        - streamByID(id uint32) *http2clientStream
+        - processGoAway(f *http2GoAwayFrame) error
+        - processSettings(f *http2SettingsFrame) error
+        - processSettingsNoWrite(f *http2SettingsFrame) error
+        - processWindowUpdate(f *http2WindowUpdateFrame) error
+        - processResetStream(f *http2RSTStreamFrame) error
+        - processPing(f *http2PingFrame) error
+        - processPushPromise(f *http2PushPromiseFrame) error
+
+    }
+    class http2clientStream << (S,Aquamarine) >> {
+        - cc *http2ClientConn
+        - ctx context.Context
+        - reqCancel <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - trace *httptrace.ClientTrace
+        - bufPipe http2pipe
+        - requestedGzip bool
+        - isHead bool
+        - abortOnce sync.Once
+        - abort <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - abortErr error
+        - peerClosed <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - donec <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - on100 <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - respHeaderRecv <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - res *Response
+        - flow http2flow
+        - inflow http2flow
+        - bytesRemain int64
+        - readErr error
+        - reqBody io.ReadCloser
+        - reqBodyContentLength int64
+        - reqBodyClosed bool
+        - sentEndStream bool
+        - sentHeaders bool
+        - firstByte bool
+        - pastHeaders bool
+        - pastTrailers bool
+        - num1xx uint8
+        - readClosed bool
+        - readAborted bool
+        - trailer Header
+        - resTrailer *Header
+
+        + ID uint32
+
+        - get1xxTraceFunc() <font color=blue>func</font>(int, textproto.MIMEHeader) error
+        - abortStream(err error) 
+        - abortStreamLocked(err error) 
+        - abortRequestBodyWrite() 
+        - doRequest(req *Request) 
+        - writeRequest(req *Request) error
+        - encodeAndWriteHeaders(req *Request) error
+        - cleanupWriteRequest(err error) 
+        - frameScratchBufferLen(maxFrameSize int) int
+        - writeRequestBody(req *Request) error
+        - awaitFlowControl(maxBytes int) (int32, error)
+        - copyTrailers() 
+
+    }
+    class http2closeWaiter << (S,Aquamarine) >> {
+        + Init() 
+        + Close() 
+        + Wait() 
+
+    }
+    class http2connError << (S,Aquamarine) >> {
+        + Code http2ErrCode
+        + Reason string
+
+        + Error() string
+
+    }
+    interface http2connectionStater  {
+        + ConnectionState() tls.ConnectionState
+
+    }
+    class http2dataBuffer << (S,Aquamarine) >> {
+        - chunks [][]byte
+        - r int
+        - w int
+        - size int
+        - expected int64
+
+        - bytesFromFirstChunk() []byte
+        - lastChunkOrAlloc(want int64) []byte
+
+        + Read(p []byte) (int, error)
+        + Len() int
+        + Write(p []byte) (int, error)
+
+    }
+    class http2dialCall << (S,Aquamarine) >> {
+        - p *http2clientConnPool
+        - ctx context.Context
+        - done <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - res *http2ClientConn
+        - err error
+
+        + _ http2incomparable
+
+        - dial(ctx context.Context, addr string) 
+
+    }
+    class http2duplicatePseudoHeaderError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    class http2erringRoundTripper << (S,Aquamarine) >> {
+        - err error
+
+        + RoundTripErr() error
+        + RoundTrip( *Request) (*Response, error)
+
+    }
+    class http2errorReader << (S,Aquamarine) >> {
+        - err error
+
+        + Read(p []byte) (int, error)
+
+    }
+    class http2flow << (S,Aquamarine) >> {
+        - n int32
+        - conn *http2flow
+
+        + _ http2incomparable
+
+        - setConnFlow(cf *http2flow) 
+        - available() int32
+        - take(n int32) 
+        - add(n int32) bool
+
+    }
+    class http2flushFrameWriter << (S,Aquamarine) >> {
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    class http2frameCache << (S,Aquamarine) >> {
+        - dataFrame http2DataFrame
+
+        - getDataFrame() *http2DataFrame
+
+    }
+    class http2frameWriteResult << (S,Aquamarine) >> {
+        - wr http2FrameWriteRequest
+        - err error
+
+        + _ http2incomparable
+
+    }
+    class http2gate << (S,Aquamarine) >> {
+        + Done() 
+        + Wait() 
+
+    }
+    class http2goAwayFlowError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    class http2goroutineLock << (S,Aquamarine) >> {
+        - check() 
+        - checkNotOn() 
+
+    }
+    class http2gzipReader << (S,Aquamarine) >> {
+        - body io.ReadCloser
+        - zr *gzip.Reader
+        - zerr error
+
+        + _ http2incomparable
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class http2handlerPanicRST << (S,Aquamarine) >> {
+        + StreamID uint32
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    class http2headerFieldNameError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    class http2headerFieldValueError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    interface http2headersEnder  {
+        + HeadersEnded() bool
+
+    }
+    interface http2headersOrContinuation  {
+        + HeaderBlockFragment() []byte
+
+    }
+    class http2httpError << (S,Aquamarine) >> {
+        - msg string
+        - timeout bool
+
+        + _ http2incomparable
+
+        + Error() string
+        + Timeout() bool
+        + Temporary() bool
+
+    }
+    class http2missingBody << (S,Aquamarine) >> {
+        + Close() error
+        + Read( []byte) (int, error)
+
+    }
+    class http2noCachedConnError << (S,Aquamarine) >> {
+        + IsHTTP2NoCachedConnError() 
+        + Error() string
+        + IsHTTP2NoCachedConnError() 
+        + Error() string
+
+    }
+    class http2noDialClientConnPool << (S,Aquamarine) >> {
+        - http2clientConnPool http2clientConnPool
+
+        + GetClientConn(req *Request, addr string) (*http2ClientConn, error)
+
+    }
+    class http2noDialH2RoundTripper << (S,Aquamarine) >> {
+        + RoundTrip(req *Request) (*Response, error)
+        + RoundTrip( *Request) (*Response, error)
+
+    }
+    class http2pipe << (S,Aquamarine) >> {
+        - mu sync.Mutex
+        - c sync.Cond
+        - b http2pipeBuffer
+        - unread int
+        - err error
+        - breakErr error
+        - donec <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - readFn <font color=blue>func</font>() 
+
+        - setBuffer(b http2pipeBuffer) 
+        - closeWithErrorAndCode(err error, fn <font color=blue>func</font>() ) 
+        - closeWithError(dst *error, err error, fn <font color=blue>func</font>() ) 
+        - closeDoneLocked() 
+
+        + Len() int
+        + Read(d []byte) (int, error)
+        + Write(d []byte) (int, error)
+        + CloseWithError(err error) 
+        + BreakWithError(err error) 
+        + Err() error
+        + Done() <font color=blue>chan</font> <font color=blue>struct</font>{}
+
+    }
+    interface http2pipeBuffer  {
+        + Len() int
+
+    }
+    class http2priorityNode << (S,Aquamarine) >> {
+        - q http2writeQueue
+        - id uint32
+        - weight uint8
+        - state http2priorityNodeState
+        - bytes int64
+        - subtreeBytes int64
+        - parent *http2priorityNode
+        - kids *http2priorityNode
+        - prev *http2priorityNode
+
+        - setParent(parent *http2priorityNode) 
+        - addBytes(b int64) 
+        - walkReadyInOrder(openParent bool, tmp *[]*http2priorityNode, f <font color=blue>func</font>(*http2priorityNode, bool) bool) bool
+
+    }
+    class http2priorityWriteScheduler << (S,Aquamarine) >> {
+        - root http2priorityNode
+        - nodes <font color=blue>map</font>[uint32]*http2priorityNode
+        - maxID uint32
+        - closedNodes []*http2priorityNode
+        - maxClosedNodesInTree int
+        - maxIdleNodesInTree int
+        - writeThrottleLimit int32
+        - enableWriteThrottle bool
+        - tmp []*http2priorityNode
+        - queuePool http2writeQueuePool
+
+        - addClosedOrIdleNode(list *[]*http2priorityNode, maxSize int, n *http2priorityNode) 
+        - removeNode(n *http2priorityNode) 
+
+        + OpenStream(streamID uint32, options http2OpenStreamOptions) 
+        + CloseStream(streamID uint32) 
+        + AdjustStream(streamID uint32, priority http2PriorityParam) 
+        + Push(wr http2FrameWriteRequest) 
+        + Pop() (http2FrameWriteRequest, bool)
+
+    }
+    class http2pseudoHeaderError << (S,Aquamarine) >> {
+        + Error() string
+
+    }
+    class http2randomWriteScheduler << (S,Aquamarine) >> {
+        - zero http2writeQueue
+        - sq <font color=blue>map</font>[uint32]*http2writeQueue
+        - queuePool http2writeQueuePool
+
+        + OpenStream(streamID uint32, options http2OpenStreamOptions) 
+        + CloseStream(streamID uint32) 
+        + AdjustStream(streamID uint32, priority http2PriorityParam) 
+        + Push(wr http2FrameWriteRequest) 
+        + Pop() (http2FrameWriteRequest, bool)
+
+    }
+    class http2readFrameResult << (S,Aquamarine) >> {
+        - f http2Frame
+        - err error
+        - readMore <font color=blue>func</font>() 
+
+    }
+    class http2requestBody << (S,Aquamarine) >> {
+        - stream *http2stream
+        - conn *http2serverConn
+        - closed bool
+        - sawEOF bool
+        - pipe *http2pipe
+        - needsContinue bool
+
+        + _ http2incomparable
+
+        + Close() error
+        + Read(p []byte) (int, error)
+
+    }
+    class http2requestParam << (S,Aquamarine) >> {
+        - method string
+        - scheme string
+        - header Header
+
+    }
+    class http2resAndError << (S,Aquamarine) >> {
+        - res *Response
+        - err error
+
+        + _ http2incomparable
+
+    }
+    class http2responseWriter << (S,Aquamarine) >> {
+        - rws *http2responseWriterState
+
+        - write(lenData int, dataB []byte, dataS string) (int, error)
+        - handlerDone() 
+
+        + Flush() 
+        + CloseNotify() <font color=blue>chan</font> bool
+        + Header() Header
+        + WriteHeader(code int) 
+        + Write(p []byte) (int, error)
+        + WriteString(s string) (int, error)
+        + Push(target string, opts *PushOptions) error
+
+    }
+    class http2responseWriterState << (S,Aquamarine) >> {
+        - stream *http2stream
+        - req *Request
+        - body *http2requestBody
+        - conn *http2serverConn
+        - bw *bufio.Writer
+        - handlerHeader Header
+        - snapHeader Header
+        - trailers []string
+        - status int
+        - wroteHeader bool
+        - sentHeader bool
+        - handlerDone bool
+        - dirty bool
+        - sentContentLen int64
+        - wroteBytes int64
+        - closeNotifierMu sync.Mutex
+        - closeNotifierCh <font color=blue>chan</font> bool
+
+        - hasTrailers() bool
+        - hasNonemptyTrailers() bool
+        - declareTrailer(k string) 
+        - writeChunk(p []byte) (int, error)
+        - promoteUndeclaredTrailers() 
+        - writeHeader(code int) 
+
+    }
+    class http2serverConn << (S,Aquamarine) >> {
+        - srv *http2Server
+        - hs *Server
+        - conn net.Conn
+        - bw *http2bufferedWriter
+        - handler Handler
+        - baseCtx context.Context
+        - framer *http2Framer
+        - doneServing <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - readFrameCh <font color=blue>chan</font> http2readFrameResult
+        - wantWriteFrameCh <font color=blue>chan</font> http2FrameWriteRequest
+        - wroteFrameCh <font color=blue>chan</font> http2frameWriteResult
+        - bodyReadCh <font color=blue>chan</font> http2bodyReadMsg
+        - serveMsgCh <font color=blue>chan</font> <font color=blue>interface</font>{}
+        - flow http2flow
+        - inflow http2flow
+        - tlsState *tls.ConnectionState
+        - remoteAddrStr string
+        - writeSched http2WriteScheduler
+        - serveG http2goroutineLock
+        - pushEnabled bool
+        - sawFirstSettings bool
+        - needToSendSettingsAck bool
+        - unackedSettings int
+        - queuedControlFrames int
+        - clientMaxStreams uint32
+        - advMaxStreams uint32
+        - curClientStreams uint32
+        - curPushedStreams uint32
+        - maxClientStreamID uint32
+        - maxPushPromiseID uint32
+        - streams <font color=blue>map</font>[uint32]*http2stream
+        - initialStreamSendWindowSize int32
+        - maxFrameSize int32
+        - headerTableSize uint32
+        - peerMaxHeaderListSize uint32
+        - canonHeader <font color=blue>map</font>[string]string
+        - writingFrame bool
+        - writingFrameAsync bool
+        - needsFrameFlush bool
+        - inGoAway bool
+        - inFrameScheduleLoop bool
+        - needToSendGoAway bool
+        - goAwayCode http2ErrCode
+        - shutdownTimer *time.Timer
+        - idleTimer *time.Timer
+        - headerWriteBuf bytes.Buffer
+        - hpackEncoder *hpack.Encoder
+        - shutdownOnce sync.Once
+
+        - rejectConn(err http2ErrCode, debug string) 
+        - maxHeaderListSize() uint32
+        - curOpenStreams() uint32
+        - state(streamID uint32) (http2streamState, *http2stream)
+        - setConnState(state ConnState) 
+        - vlogf(format string, args ...<font color=blue>interface</font>{}) 
+        - logf(format string, args ...<font color=blue>interface</font>{}) 
+        - condlogf(err error, format string, args ...<font color=blue>interface</font>{}) 
+        - canonicalHeader(v string) string
+        - readFrames() 
+        - writeFrameAsync(wr http2FrameWriteRequest) 
+        - closeAllStreamsOnConnClose() 
+        - stopShutdownTimer() 
+        - notePanic() 
+        - serve() 
+        - awaitGracefulShutdown(sharedCh <font color=blue>chan</font> <font color=blue>struct</font>{}, privateCh <font color=blue>chan</font> <font color=blue>struct</font>{}) 
+        - onSettingsTimer() 
+        - onIdleTimer() 
+        - onShutdownTimer() 
+        - sendServeMsg(msg <font color=blue>interface</font>{}) 
+        - readPreface() error
+        - writeDataFromHandler(stream *http2stream, data []byte, endStream bool) error
+        - writeFrameFromHandler(wr http2FrameWriteRequest) error
+        - writeFrame(wr http2FrameWriteRequest) 
+        - startFrameWrite(wr http2FrameWriteRequest) 
+        - wroteFrame(res http2frameWriteResult) 
+        - scheduleFrameWrite() 
+        - startGracefulShutdown() 
+        - startGracefulShutdownInternal() 
+        - goAway(code http2ErrCode) 
+        - shutDownIn(d time.Duration) 
+        - resetStream(se http2StreamError) 
+        - processFrameFromReader(res http2readFrameResult) bool
+        - processFrame(f http2Frame) error
+        - processPing(f *http2PingFrame) error
+        - processWindowUpdate(f *http2WindowUpdateFrame) error
+        - processResetStream(f *http2RSTStreamFrame) error
+        - closeStream(st *http2stream, err error) 
+        - processSettings(f *http2SettingsFrame) error
+        - processSetting(s http2Setting) error
+        - processSettingInitialWindowSize(val uint32) error
+        - processData(f *http2DataFrame) error
+        - processGoAway(f *http2GoAwayFrame) error
+        - processHeaders(f *http2MetaHeadersFrame) error
+        - checkPriority(streamID uint32, p http2PriorityParam) error
+        - processPriority(f *http2PriorityFrame) error
+        - newStream(id uint32, pusherID uint32, state http2streamState) *http2stream
+        - newWriterAndRequest(st *http2stream, f *http2MetaHeadersFrame) (*http2responseWriter, *Request, error)
+        - newWriterAndRequestNoBody(st *http2stream, rp http2requestParam) (*http2responseWriter, *Request, error)
+        - runHandler(rw *http2responseWriter, req *Request, handler <font color=blue>func</font>(ResponseWriter, *Request) ) 
+        - writeHeaders(st *http2stream, headerData *http2writeResHeaders) error
+        - write100ContinueHeaders(st *http2stream) 
+        - noteBodyReadFromHandler(st *http2stream, n int, err error) 
+        - noteBodyRead(st *http2stream, n int) 
+        - sendWindowUpdate(st *http2stream, n int) 
+        - sendWindowUpdate32(st *http2stream, n int32) 
+        - startPush(msg *http2startPushRequest) 
+        - countError(name string, err error) error
+
+        + Framer() *http2Framer
+        + CloseConn() error
+        + Flush() error
+        + HeaderEncoder() (*hpack.Encoder, *bytes.Buffer)
+
+    }
+    class http2serverInternalState << (S,Aquamarine) >> {
+        - mu sync.Mutex
+        - activeConns <font color=blue>map</font>[*http2serverConn]<font color=blue>struct</font>{}
+
+        - registerConn(sc *http2serverConn) 
+        - unregisterConn(sc *http2serverConn) 
+        - startGracefulShutdown() 
+
+    }
+    class http2sortPriorityNodeSiblings << (S,Aquamarine) >> {
+        + Len() int
+        + Swap(i int, k int) 
+        + Less(i int, k int) bool
+
+    }
+    class http2sorter << (S,Aquamarine) >> {
+        - v []string
+
+        + Len() int
+        + Swap(i int, j int) 
+        + Less(i int, j int) bool
+        + Keys(h Header) []string
+        + SortStrings(ss []string) 
+
+    }
+    class http2startPushRequest << (S,Aquamarine) >> {
+        - parent *http2stream
+        - method string
+        - url *url.URL
+        - header Header
+        - done <font color=blue>chan</font> error
+
+    }
+    class http2stickyErrWriter << (S,Aquamarine) >> {
+        - conn net.Conn
+        - timeout time.Duration
+        - err *error
+
+        + Write(p []byte) (int, error)
+
+    }
+    class http2stream << (S,Aquamarine) >> {
+        - sc *http2serverConn
+        - id uint32
+        - body *http2pipe
+        - cw http2closeWaiter
+        - ctx context.Context
+        - cancelCtx <font color=blue>func</font>() 
+        - bodyBytes int64
+        - declBodyBytes int64
+        - flow http2flow
+        - inflow http2flow
+        - state http2streamState
+        - resetQueued bool
+        - gotTrailerHeader bool
+        - wroteHeaders bool
+        - writeDeadline *time.Timer
+        - trailer Header
+        - reqTrailer Header
+
+        - isPushed() bool
+        - endStream() 
+        - copyTrailersToHandlerRequest() 
+        - onWriteTimeout() 
+        - processTrailerHeaders(f *http2MetaHeadersFrame) error
+
+    }
+    interface http2streamEnder  {
+        + StreamEnded() bool
+
+    }
+    class http2streamState << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    interface http2stringWriter  {
+        + WriteString(s string) (int, error)
+
+    }
+    class http2transportResponseBody << (S,Aquamarine) >> {
+        - cs *http2clientStream
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class http2write100ContinueHeadersFrame << (S,Aquamarine) >> {
+        - streamID uint32
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    interface http2writeContext  {
+        + Framer() *http2Framer
+        + Flush() error
+        + CloseConn() error
+        + HeaderEncoder() (*hpack.Encoder, *bytes.Buffer)
+
+    }
+    class http2writeData << (S,Aquamarine) >> {
+        - streamID uint32
+        - p []byte
+        - endStream bool
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+        + String() string
+
+    }
+    interface http2writeFramer  {
+        - writeFrame( http2writeContext) error
+        - staysWithinBuffer(size int) bool
+
+    }
+    class http2writeGoAway << (S,Aquamarine) >> {
+        - maxStreamID uint32
+        - code http2ErrCode
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    class http2writePingAck << (S,Aquamarine) >> {
+        - pf *http2PingFrame
+
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    class http2writePushPromise << (S,Aquamarine) >> {
+        - streamID uint32
+        - method string
+        - url *url.URL
+        - h Header
+        - allocatePromisedID <font color=blue>func</font>() (uint32, error)
+        - promisedID uint32
+
+        - staysWithinBuffer(max int) bool
+        - writeFrame(ctx http2writeContext) error
+        - writeHeaderBlock(ctx http2writeContext, frag []byte, firstFrag bool, lastFrag bool) error
+
+    }
+    class http2writeQueue << (S,Aquamarine) >> {
+        - s []http2FrameWriteRequest
+
+        - empty() bool
+        - push(wr http2FrameWriteRequest) 
+        - shift() http2FrameWriteRequest
+        - consume(n int32) (http2FrameWriteRequest, bool)
+
+    }
+    class http2writeQueuePool << (S,Aquamarine) >> {
+        - put(q *http2writeQueue) 
+        - get() *http2writeQueue
+
+    }
+    class http2writeResHeaders << (S,Aquamarine) >> {
+        - streamID uint32
+        - httpResCode int
+        - h Header
+        - trailers []string
+        - endStream bool
+        - date string
+        - contentType string
+        - contentLength string
+
+        - staysWithinBuffer(max int) bool
+        - writeFrame(ctx http2writeContext) error
+        - writeHeaderBlock(ctx http2writeContext, frag []byte, firstFrag bool, lastFrag bool) error
+
+    }
+    class http2writeSettings << (S,Aquamarine) >> {
+        - staysWithinBuffer(max int) bool
+        - writeFrame(ctx http2writeContext) error
+
+    }
+    class http2writeSettingsAck << (S,Aquamarine) >> {
+        - writeFrame(ctx http2writeContext) error
+        - staysWithinBuffer(max int) bool
+
+    }
+    class http2writeWindowUpdate << (S,Aquamarine) >> {
+        - streamID uint32
+        - n uint32
+
+        - staysWithinBuffer(max int) bool
+        - writeFrame(ctx http2writeContext) error
+
+    }
+    class httpError << (S,Aquamarine) >> {
+        - err string
+        - timeout bool
+
+        + Error() string
+        + Timeout() bool
+        + Temporary() bool
+
+    }
+    class httpRange << (S,Aquamarine) >> {
+        - start int64
+
+        - contentRange(size int64) string
+        - mimeHeader(contentType string, size int64) textproto.MIMEHeader
+
+    }
+    class initALPNRequest << (S,Aquamarine) >> {
+        - ctx context.Context
+        - c *tls.Conn
+        - h serverHandler
+
+        + BaseContext() context.Context
+        + ServeHTTP(rw ResponseWriter, req *Request) 
+
+    }
+    class ioFS << (S,Aquamarine) >> {
+        - fsys fs.FS
+
+        + Open(name string) (File, error)
+
+    }
+    class ioFile << (S,Aquamarine) >> {
+        - file fs.File
+
+        + Close() error
+        + Read(b []byte) (int, error)
+        + Stat() (fs.FileInfo, error)
+        + Seek(offset int64, whence int) (int64, error)
+        + ReadDir(count int) ([]fs.DirEntry, error)
+        + Readdir(count int) ([]fs.FileInfo, error)
+
+    }
+    class keyValues << (S,Aquamarine) >> {
+        - key string
+        - values []string
+
+    }
+    class loggingConn << (S,Aquamarine) >> {
+        - name string
+
+        + Write(p []byte) (int, error)
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class maskedSig << (S,Aquamarine) >> {
+        - mask []byte
+        - skipWS bool
+        - ct string
+
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class maxBytesReader << (S,Aquamarine) >> {
+        - w ResponseWriter
+        - r io.ReadCloser
+        - n int64
+        - err error
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class mp4Sig << (S,Aquamarine) >> {
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class muxEntry << (S,Aquamarine) >> {
+        - h Handler
+        - pattern string
+
+    }
+    class noBody << (S,Aquamarine) >> {
+        + Read( []byte) (int, error)
+        + Close() error
+        + WriteTo( io.Writer) (int64, error)
+
+    }
+    class nothingWrittenError << (S,Aquamarine) >> {
+    }
+    class onceCloseListener << (S,Aquamarine) >> {
+        - once sync.Once
+        - closeErr error
+
+        - close() 
+
+        + Close() error
+
+    }
+    class persistConn << (S,Aquamarine) >> {
+        - alt RoundTripper
+        - t *Transport
+        - cacheKey connectMethodKey
+        - conn net.Conn
+        - tlsState *tls.ConnectionState
+        - br *bufio.Reader
+        - bw *bufio.Writer
+        - nwrite int64
+        - reqch <font color=blue>chan</font> requestAndChan
+        - writech <font color=blue>chan</font> writeRequest
+        - closech <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - isProxy bool
+        - sawEOF bool
+        - readLimit int64
+        - writeErrCh <font color=blue>chan</font> error
+        - writeLoopDone <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - idleAt time.Time
+        - idleTimer *time.Timer
+        - mu sync.Mutex
+        - numExpectedResponses int
+        - closed error
+        - canceledErr error
+        - broken bool
+        - reused bool
+        - mutateHeaderFunc <font color=blue>func</font>(Header) 
+
+        - shouldRetryRequest(req *Request, err error) bool
+        - addTLS(ctx context.Context, name string, trace *httptrace.ClientTrace) error
+        - maxHeaderResponseSize() int64
+        - isBroken() bool
+        - canceled() error
+        - isReused() bool
+        - gotIdleConnTrace(idleAt time.Time) httptrace.GotConnInfo
+        - cancelRequest(err error) 
+        - closeConnIfStillIdle() 
+        - mapRoundTripError(req *transportRequest, startBytesWritten int64, err error) error
+        - readLoop() 
+        - readLoopPeekFailLocked(peekErr error) 
+        - readResponse(rc requestAndChan, trace *httptrace.ClientTrace) (*Response, error)
+        - waitForContinue(continueCh <font color=blue>chan</font> <font color=blue>struct</font>{}) <font color=blue>func</font>() bool
+        - writeLoop() 
+        - wroteRequest() bool
+        - roundTrip(req *transportRequest) (*Response, error)
+        - markReused() 
+        - close(err error) 
+        - closeLocked(err error) 
+
+        + Read(p []byte) (int, error)
+
+    }
+    class persistConnWriter << (S,Aquamarine) >> {
+        - pc *persistConn
+
+        + Write(p []byte) (int, error)
+        + ReadFrom(r io.Reader) (int64, error)
+
+    }
+    class populateResponse << (S,Aquamarine) >> {
+        - res *Response
+        - ch <font color=blue>chan</font> *Response
+        - wroteHeader bool
+        - hasContent bool
+        - sentResponse bool
+        - pw *io.PipeWriter
+
+        - finish() 
+        - sendResponse() 
+
+        + Header() Header
+        + WriteHeader(code int) 
+        + Write(p []byte) (int, error)
+
+    }
+    class readResult << (S,Aquamarine) >> {
+        - n int
+        - err error
+        - b byte
+
+        + _ incomparable
+
+    }
+    class readTrackingBody << (S,Aquamarine) >> {
+        - didRead bool
+        - didClose bool
+
+        + Read(data []byte) (int, error)
+        + Close() error
+
+    }
+    class readWriteCloserBody << (S,Aquamarine) >> {
+        - br *bufio.Reader
+
+        + _ incomparable
+
+        + Read(p []byte) (int, error)
+
+    }
+    class redirectHandler << (S,Aquamarine) >> {
+        - url string
+        - code int
+
+        + ServeHTTP(w ResponseWriter, r *Request) 
+
+    }
+    class requestAndChan << (S,Aquamarine) >> {
+        - req *Request
+        - cancelKey cancelKey
+        - ch <font color=blue>chan</font> responseAndError
+        - addedGzip bool
+        - continueCh <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - callerGone <font color=blue>chan</font> <font color=blue>struct</font>{}
+
+        + _ incomparable
+
+    }
+    class requestBodyReadError << (S,Aquamarine) >> {
+    }
+    class response << (S,Aquamarine) >> {
+        - conn *conn
+        - req *Request
+        - reqBody io.ReadCloser
+        - cancelCtx context.CancelFunc
+        - wroteHeader bool
+        - wroteContinue bool
+        - wants10KeepAlive bool
+        - wantsClose bool
+        - canWriteContinue atomicBool
+        - writeContinueMu sync.Mutex
+        - w *bufio.Writer
+        - cw chunkWriter
+        - handlerHeader Header
+        - calledHeader bool
+        - written int64
+        - contentLength int64
+        - status int
+        - closeAfterReply bool
+        - requestBodyLimitHit bool
+        - trailers []string
+        - handlerDone atomicBool
+        - dateBuf []byte
+        - clenBuf []byte
+        - statusBuf []byte
+        - closeNotifyCh <font color=blue>chan</font> bool
+        - didCloseNotify int32
+
+        - finalTrailers() Header
+        - declareTrailer(k string) 
+        - requestTooLarge() 
+        - needsSniff() bool
+        - bodyAllowed() bool
+        - write(lenData int, dataB []byte, dataS string) (int, error)
+        - finishRequest() 
+        - shouldReuseConnection() bool
+        - closedRequestBodyEarly() bool
+        - sendExpectationFailed() 
+
+        + ReadFrom(src io.Reader) (int64, error)
+        + Header() Header
+        + WriteHeader(code int) 
+        + Write(data []byte) (int, error)
+        + WriteString(data string) (int, error)
+        + Flush() 
+        + Hijack() (net.Conn, *bufio.ReadWriter, error)
+        + CloseNotify() <font color=blue>chan</font> bool
+
+    }
+    class responseAndError << (S,Aquamarine) >> {
+        - res *Response
+        - err error
+
+        + _ incomparable
+
+    }
+    class serverHandler << (S,Aquamarine) >> {
+        - srv *Server
+
+        + ServeHTTP(rw ResponseWriter, req *Request) 
+
+    }
+    interface sniffSig  {
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class socksAddr << (S,Aquamarine) >> {
+        + Name string
+        + IP net.IP
+        + Port int
+
+        + Network() string
+        + String() string
+
+    }
+    class socksCommand << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class socksConn << (S,Aquamarine) >> {
+        - boundAddr net.Addr
+
+        + BoundAddr() net.Addr
+
+    }
+    class socksDialer << (S,Aquamarine) >> {
+        - cmd socksCommand
+        - proxyNetwork string
+        - proxyAddress string
+
+        + ProxyDial <font color=blue>func</font>(context.Context, string, string) (net.Conn, error)
+        + AuthMethods []socksAuthMethod
+        + Authenticate <font color=blue>func</font>(context.Context, io.ReadWriter, socksAuthMethod) error
+
+        - connect(ctx context.Context, c net.Conn, address string) (net.Addr, error)
+        - validateTarget(network string, address string) error
+        - pathAddrs(address string) (net.Addr, net.Addr, error)
+
+        + DialContext(ctx context.Context, network string, address string) (net.Conn, error)
+        + DialWithConn(ctx context.Context, c net.Conn, network string, address string) (net.Addr, error)
+        + Dial(network string, address string) (net.Conn, error)
+
+    }
+    class socksReply << (S,Aquamarine) >> {
+        + String() string
+
+    }
+    class socksUsernamePassword << (S,Aquamarine) >> {
+        + Username string
+        + Password string
+
+        + Authenticate(ctx context.Context, rw io.ReadWriter, auth socksAuthMethod) error
+
+    }
+    class statusError << (S,Aquamarine) >> {
+        - code int
+        - text string
+
+        + Error() string
+
+    }
+    class streamReader << (S,Aquamarine) >> {
+        - pending []byte
+        - stream js.Value
+        - err error
+
+        + Read(p []byte) (int, error)
+        + Close() error
+
+    }
+    class stringWriter << (S,Aquamarine) >> {
+        - w io.Writer
+
+        + WriteString(s string) (int, error)
+
+    }
+    class tLogKey << (S,Aquamarine) >> {
+    }
+    class textSig << (S,Aquamarine) >> {
+        - match(data []byte, firstNonWS int) string
+
+    }
+    class timeoutHandler << (S,Aquamarine) >> {
+        - handler Handler
+        - body string
+        - dt time.Duration
+        - testContext context.Context
+
+        - errorBody() string
+
+        + ServeHTTP(w ResponseWriter, r *Request) 
+
+    }
+    class timeoutWriter << (S,Aquamarine) >> {
+        - w ResponseWriter
+        - h Header
+        - wbuf bytes.Buffer
+        - req *Request
+        - mu sync.Mutex
+        - err error
+        - wroteHeader bool
+        - code int
+
+        - writeHeaderLocked(code int) 
+
+        + Push(target string, opts *PushOptions) error
+        + Header() Header
+        + Write(p []byte) (int, error)
+        + WriteHeader(code int) 
+
+    }
+    class tlsHandshakeTimeoutError << (S,Aquamarine) >> {
+        + Timeout() bool
+        + Temporary() bool
+        + Error() string
+
+    }
+    class transferReader << (S,Aquamarine) >> {
+        + Header Header
+        + StatusCode int
+        + RequestMethod string
+        + ProtoMajor int
+        + ProtoMinor int
+        + Body io.ReadCloser
+        + ContentLength int64
+        + Chunked bool
+        + Close bool
+        + Trailer Header
+
+        - protoAtLeast(m int, n int) bool
+        - parseTransferEncoding() error
+
+    }
+    class transferWriter << (S,Aquamarine) >> {
+        - bodyReadError error
+
+        + Method string
+        + Body io.Reader
+        + BodyCloser io.Closer
+        + ResponseToHEAD bool
+        + ContentLength int64
+        + Close bool
+        + TransferEncoding []string
+        + Header Header
+        + Trailer Header
+        + IsResponse bool
+        + FlushHeaders bool
+        + ByteReadCh <font color=blue>chan</font> readResult
+
+        - shouldSendChunkedRequestBody() bool
+        - probeRequestBody() 
+        - shouldSendContentLength() bool
+        - writeHeader(w io.Writer, trace *httptrace.ClientTrace) error
+        - writeBody(w io.Writer) error
+        - doBodyCopy(dst io.Writer, src io.Reader) (int64, error)
+        - unwrapBody() io.Reader
+
+    }
+    class transportReadFromServerError << (S,Aquamarine) >> {
+        - err error
+
+        + Unwrap() error
+        + Error() string
+
+    }
+    class transportRequest << (S,Aquamarine) >> {
+        - extra Header
+        - trace *httptrace.ClientTrace
+        - cancelKey cancelKey
+        - mu sync.Mutex
+        - err error
+
+        - extraHeaders() Header
+        - setError(err error) 
+        - logf(format string, args ...any) 
+
+    }
+    class unsupportedTEError << (S,Aquamarine) >> {
+        - err string
+
+        + Error() string
+
+    }
+    class wantConn << (S,Aquamarine) >> {
+        - cm connectMethod
+        - key connectMethodKey
+        - ctx context.Context
+        - ready <font color=blue>chan</font> <font color=blue>struct</font>{}
+        - beforeDial <font color=blue>func</font>() 
+        - afterDial <font color=blue>func</font>() 
+        - mu sync.Mutex
+        - pc *persistConn
+        - err error
+
+        - waiting() bool
+        - tryDeliver(pc *persistConn, err error) bool
+        - cancel(t *Transport, err error) 
+
+    }
+    class wantConnQueue << (S,Aquamarine) >> {
+        - head []*wantConn
+        - headPos int
+        - tail []*wantConn
+
+        - len() int
+        - pushBack(w *wantConn) 
+        - popFront() *wantConn
+        - peekFront() *wantConn
+        - cleanFront() bool
+
+    }
+    class writeRequest << (S,Aquamarine) >> {
+        - req *transportRequest
+        - ch <font color=blue>chan</font> error
+        - continueCh <font color=blue>chan</font> <font color=blue>struct</font>{}
+
+    }
+    class writerOnly << (S,Aquamarine) >> {
+    }
+    class "[]fs.DirEntry" as fsDirEntry {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+    class "[]fs.FileInfo" as fsFileInfo {
+        'This class was created so that we can correctly have an alias pointing to this name. Since it contains dots that can break namespaces
+    }
+}
+"http.http2FrameHeader" *-- "http.http2ContinuationFrame"
+"http.http2FrameHeader" *-- "http.http2DataFrame"
+"http.http2FrameHeader" *-- "http.http2GoAwayFrame"
+"http.http2FrameHeader" *-- "http.http2HeadersFrame"
+"http.http2HeadersFrame" *-- "http.http2MetaHeadersFrame"
+"http.http2FrameHeader" *-- "http.http2PingFrame"
+"http.http2FrameHeader" *-- "http.http2PriorityFrame"
+"http.http2PriorityParam" *-- "http.http2PriorityFrame"
+"http.http2FrameHeader" *-- "http.http2PushPromiseFrame"
+"http.http2FrameHeader" *-- "http.http2RSTStreamFrame"
+"http.http2FrameHeader" *-- "http.http2SettingsFrame"
+"http.http2FrameHeader" *-- "http.http2UnknownFrame"
+"http.http2FrameHeader" *-- "http.http2WindowUpdateFrame"
+"http.http2ClientConnPool" *-- "http.http2clientConnPoolIdleCloser"
+"http.http2headersEnder" *-- "http.http2headersOrContinuation"
+"http.http2clientConnPool" *-- "http.http2noDialClientConnPool"
+"http.http2Transport" *-- "http.http2noDialH2RoundTripper"
+"net.Conn" *-- "http.loggingConn"
+"__builtin__.error" *-- "http.nothingWrittenError"
+"net.Listener" *-- "http.onceCloseListener"
+"io.ReadCloser" *-- "http.readTrackingBody"
+"io.ReadWriteCloser" *-- "http.readWriteCloserBody"
+"__builtin__.error" *-- "http.requestBodyReadError"
+"net.Conn" *-- "http.socksConn"
+"http.Request" *-- "http.transportRequest"
+"io.Writer" *-- "http.writerOnly"
+
+"http.h2Transport" <|-- "http.Client"
+"httptest.closeIdleTransport" <|-- "http.Client"
+"http.FileSystem" <|-- "http.Dir"
+"http.Handler" <|-- "http.HandlerFunc"
+"http.Handler" <|-- "http.ServeMux"
+"http.RoundTripper" <|-- "http.Transport"
+"http.h2Transport" <|-- "http.Transport"
+"httptest.closeIdleTransport" <|-- "http.Transport"
+"http.anyDirs" <|-- "http.dirEntryDirs"
+"http.sniffSig" <|-- "http.exactSig"
+"http.Handler" <|-- "http.fileHandler"
+"http.anyDirs" <|-- "http.fileInfoDirs"
+"http.RoundTripper" <|-- "http.fileTransport"
+"http.Handler" <|-- "http.globalOptionsHandler"
+"http.http2pipeBuffer" <|-- "http.headerSorter"
+"http.sniffSig" <|-- "http.htmlSig"
+"http.RoundTripper" <|-- "http.http2ClientConn"
+"http.http2headersEnder" <|-- "http.http2ContinuationFrame"
+"http.http2headersOrContinuation" <|-- "http.http2ContinuationFrame"
+"http.http2streamEnder" <|-- "http.http2DataFrame"
+"http.http2Frame" <|-- "http.http2FrameHeader"
+"http.http2headersEnder" <|-- "http.http2HeadersFrame"
+"http.http2headersOrContinuation" <|-- "http.http2HeadersFrame"
+"http.http2streamEnder" <|-- "http.http2HeadersFrame"
+"http.http2headersEnder" <|-- "http.http2PushPromiseFrame"
+"http.http2headersOrContinuation" <|-- "http.http2PushPromiseFrame"
+"http.http2writeFramer" <|-- "http.http2StreamError"
+"http.RoundTripper" <|-- "http.http2Transport"
+"http.h2Transport" <|-- "http.http2Transport"
+"httptest.closeIdleTransport" <|-- "http.http2Transport"
+"http.http2ClientConnPool" <|-- "http.http2clientConnPool"
+"http.http2clientConnPoolIdleCloser" <|-- "http.http2clientConnPool"
+"http.http2pipeBuffer" <|-- "http.http2dataBuffer"
+"http.RoundTripper" <|-- "http.http2erringRoundTripper"
+"http.erringRoundTripper" <|-- "http.http2erringRoundTripper"
+"http.http2writeFramer" <|-- "http.http2flushFrameWriter"
+"http.http2writeFramer" <|-- "http.http2handlerPanicRST"
+"http.RoundTripper" <|-- "http.http2noDialH2RoundTripper"
+"http.http2pipeBuffer" <|-- "http.http2pipe"
+"http.http2WriteScheduler" <|-- "http.http2priorityWriteScheduler"
+"http.http2WriteScheduler" <|-- "http.http2randomWriteScheduler"
+"http.CloseNotifier" <|-- "http.http2responseWriter"
+"http.Flusher" <|-- "http.http2responseWriter"
+"http.Pusher" <|-- "http.http2responseWriter"
+"http.ResponseWriter" <|-- "http.http2responseWriter"
+"http.http2stringWriter" <|-- "http.http2responseWriter"
+"http.http2writeContext" <|-- "http.http2serverConn"
+"http.http2pipeBuffer" <|-- "http.http2sortPriorityNodeSiblings"
+"http.http2pipeBuffer" <|-- "http.http2sorter"
+"http.http2writeFramer" <|-- "http.http2write100ContinueHeadersFrame"
+"http.http2writeFramer" <|-- "http.http2writeData"
+"http.http2writeFramer" <|-- "http.http2writeGoAway"
+"http.http2writeFramer" <|-- "http.http2writePingAck"
+"http.http2writeFramer" <|-- "http.http2writePushPromise"
+"http.http2writeFramer" <|-- "http.http2writeResHeaders"
+"http.http2writeFramer" <|-- "http.http2writeSettings"
+"http.http2writeFramer" <|-- "http.http2writeSettingsAck"
+"http.http2writeFramer" <|-- "http.http2writeWindowUpdate"
+"http.Handler" <|-- "http.initALPNRequest"
+"http.FileSystem" <|-- "http.ioFS"
+"http.File" <|-- "http.ioFile"
+"http.sniffSig" <|-- "http.maskedSig"
+"http.sniffSig" <|-- "http.mp4Sig"
+"http.ResponseWriter" <|-- "http.populateResponse"
+"http.Handler" <|-- "http.redirectHandler"
+"http.CloseNotifier" <|-- "http.response"
+"http.Flusher" <|-- "http.response"
+"http.Hijacker" <|-- "http.response"
+"http.ResponseWriter" <|-- "http.response"
+"http.http2stringWriter" <|-- "http.response"
+"http.Handler" <|-- "http.serverHandler"
+"http.http2stringWriter" <|-- "http.stringWriter"
+"http.sniffSig" <|-- "http.textSig"
+"http.Handler" <|-- "http.timeoutHandler"
+"http.Pusher" <|-- "http.timeoutWriter"
+"http.ResponseWriter" <|-- "http.timeoutWriter"
+
+namespace httptest {
+    class ResponseRecorder << (S,Aquamarine) >> {
+        - result *http.Response
+        - snapHeader http.Header
+        - wroteHeader bool
+
+        + Code int
+        + HeaderMap http.Header
+        + Body *bytes.Buffer
+        + Flushed bool
+
+        - writeHeader(b []byte, str string) 
+
+        + Header() http.Header
+        + Write(buf []byte) (int, error)
+        + WriteString(str string) (int, error)
+        + WriteHeader(code int) 
+        + Flush() 
+        + Result() *http.Response
+
+    }
+    class Server << (S,Aquamarine) >> {
+        - certificate *x509.Certificate
+        - wg sync.WaitGroup
+        - mu sync.Mutex
+        - closed bool
+        - conns <font color=blue>map</font>[net.Conn]http.ConnState
+        - client *http.Client
+
+        + URL string
+        + Listener net.Listener
+        + EnableHTTP2 bool
+        + TLS *tls.Config
+        + Config *http.Server
+
+        - logCloseHangDebugInfo() 
+        - goServe() 
+        - wrap() 
+        - closeConn(c net.Conn) 
+        - closeConnChan(c net.Conn, done <font color=blue>chan</font> <font color=blue>struct</font>{}) 
+
+        + Start() 
+        + StartTLS() 
+        + Close() 
+        + CloseClientConnections() 
+        + Certificate() *x509.Certificate
+        + Client() *http.Client
+
+    }
+    interface closeIdleTransport  {
+        + CloseIdleConnections() 
+
+    }
+}
+
+"http.Flusher" <|-- "httptest.ResponseRecorder"
+"http.ResponseWriter" <|-- "httptest.ResponseRecorder"
+"http.http2stringWriter" <|-- "httptest.ResponseRecorder"
+
+namespace httptrace {
+    class ClientTrace << (S,Aquamarine) >> {
+        + GetConn <font color=blue>func</font>(string) 
+        + GotConn <font color=blue>func</font>(GotConnInfo) 
+        + PutIdleConn <font color=blue>func</font>(error) 
+        + GotFirstResponseByte <font color=blue>func</font>() 
+        + Got100Continue <font color=blue>func</font>() 
+        + Got1xxResponse <font color=blue>func</font>(int, textproto.MIMEHeader) error
+        + DNSStart <font color=blue>func</font>(DNSStartInfo) 
+        + DNSDone <font color=blue>func</font>(DNSDoneInfo) 
+        + ConnectStart <font color=blue>func</font>(string, string) 
+        + ConnectDone <font color=blue>func</font>(string, string, error) 
+        + TLSHandshakeStart <font color=blue>func</font>() 
+        + TLSHandshakeDone <font color=blue>func</font>(tls.ConnectionState, error) 
+        + WroteHeaderField <font color=blue>func</font>(string, []string) 
+        + WroteHeaders <font color=blue>func</font>() 
+        + Wait100Continue <font color=blue>func</font>() 
+        + WroteRequest <font color=blue>func</font>(WroteRequestInfo) 
+
+        - compose(old *ClientTrace) 
+        - hasNetHooks() bool
+
+    }
+    class DNSDoneInfo << (S,Aquamarine) >> {
+        + Addrs []net.IPAddr
+        + Err error
+        + Coalesced bool
+
+    }
+    class DNSStartInfo << (S,Aquamarine) >> {
+        + Host string
+
+    }
+    class GotConnInfo << (S,Aquamarine) >> {
+        + Conn net.Conn
+        + Reused bool
+        + WasIdle bool
+        + IdleTime time.Duration
+
+    }
+    class WroteRequestInfo << (S,Aquamarine) >> {
+        + Err error
+
+    }
+    class clientEventContextKey << (S,Aquamarine) >> {
+    }
+}
+
+
+namespace httputil {
+    interface BufferPool  {
+        + Get() []byte
+        + Put( []byte) 
+
+    }
+    class ClientConn << (S,Aquamarine) >> {
+        - mu sync.Mutex
+        - c net.Conn
+        - r *bufio.Reader
+        - re error
+        - lastbody io.ReadCloser
+        - nread int
+        - pipereq <font color=blue>map</font>[*http.Request]uint
+        - pipe textproto.Pipeline
+        - writeReq <font color=blue>func</font>(*http.Request, io.Writer) error
+
+        + Hijack() (net.Conn, *bufio.Reader)
+        + Close() error
+        + Write(req *http.Request) error
+        + Pending() int
+        + Read(req *http.Request) (*http.Response, error)
+        + Do(req *http.Request) (*http.Response, error)
+
+    }
+    class ReverseProxy << (S,Aquamarine) >> {
+        + Director <font color=blue>func</font>(*http.Request) 
+        + Transport http.RoundTripper
+        + FlushInterval time.Duration
+        + ErrorLog *log.Logger
+        + BufferPool BufferPool
+        + ModifyResponse <font color=blue>func</font>(*http.Response) error
+        + ErrorHandler <font color=blue>func</font>(http.ResponseWriter, *http.Request, error) 
+
+        - defaultErrorHandler(rw http.ResponseWriter, req *http.Request, err error) 
+        - getErrorHandler() <font color=blue>func</font>(http.ResponseWriter, *http.Request, error) 
+        - modifyResponse(rw http.ResponseWriter, res *http.Response, req *http.Request) bool
+        - flushInterval(res *http.Response) time.Duration
+        - copyResponse(dst io.Writer, src io.Reader, flushInterval time.Duration) error
+        - copyBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, error)
+        - logf(format string, args ...any) 
+        - handleUpgradeResponse(rw http.ResponseWriter, req *http.Request, res *http.Response) 
+
+        + ServeHTTP(rw http.ResponseWriter, req *http.Request) 
+
+    }
+    class ServerConn << (S,Aquamarine) >> {
+        - mu sync.Mutex
+        - c net.Conn
+        - r *bufio.Reader
+        - re error
+        - lastbody io.ReadCloser
+        - nread int
+        - pipereq <font color=blue>map</font>[*http.Request]uint
+        - pipe textproto.Pipeline
+
+        + Hijack() (net.Conn, *bufio.Reader)
+        + Close() error
+        + Read() (*http.Request, error)
+        + Pending() int
+        + Write(req *http.Request, resp *http.Response) error
+
+    }
+    class delegateReader << (S,Aquamarine) >> {
+        - c <font color=blue>chan</font> io.Reader
+        - err error
+        - r io.Reader
+
+        + Read(p []byte) (int, error)
+
+    }
+    class dumpConn << (S,Aquamarine) >> {
+        + Close() error
+        + LocalAddr() net.Addr
+        + RemoteAddr() net.Addr
+        + SetDeadline(t time.Time) error
+        + SetReadDeadline(t time.Time) error
+        + SetWriteDeadline(t time.Time) error
+
+    }
+    class failureToReadBody << (S,Aquamarine) >> {
+        + Read( []byte) (int, error)
+        + Close() error
+
+    }
+    class httputil.neverEnding << (T, #FF7700) >>  {
+    }
+    class maxLatencyWriter << (S,Aquamarine) >> {
+        - dst writeFlusher
+        - latency time.Duration
+        - mu sync.Mutex
+        - t *time.Timer
+        - flushPending bool
+
+        - delayedFlush() 
+        - stop() 
+
+        + Write(p []byte) (int, error)
+
+    }
+    class neverEnding << (S,Aquamarine) >> {
+        + Read(p []byte) (int, error)
+
+    }
+    class switchProtocolCopier << (S,Aquamarine) >> {
+        - user io.ReadWriter
+
+        - copyFromBackend(errc <font color=blue>chan</font> error) 
+        - copyToBackend(errc <font color=blue>chan</font> error) 
+
+    }
+    interface writeFlusher  {
+    }
+}
+"io.Reader" *-- "httputil.dumpConn"
+"io.Writer" *-- "httputil.dumpConn"
+
+"http.Handler" <|-- "httputil.ReverseProxy"
+
+namespace internal {
+    class FlushAfterChunkWriter << (S,Aquamarine) >> {
+    }
+    class chunkedReader << (S,Aquamarine) >> {
+        - r *bufio.Reader
+        - n uint64
+        - err error
+        - buf []byte
+        - checkEnd bool
+
+        - beginChunk() 
+        - chunkHeaderAvailable() bool
+
+        + Read(b []uint8) (int, error)
+
+    }
+    class chunkedWriter << (S,Aquamarine) >> {
+        + Wire io.Writer
+
+        + Write(data []byte) (int, error)
+        + Close() error
+
+    }
+}
+"bufio.Writer" *-- "internal.FlushAfterChunkWriter"
+
+
+namespace main {
+    class Chan << (S,Aquamarine) >> {
+        + ServeHTTP(w http.ResponseWriter, req *http.Request) 
+
+    }
+    class Counter << (S,Aquamarine) >> {
+        - mu sync.Mutex
+        - n int
+
+        + String() string
+        + ServeHTTP(w http.ResponseWriter, req *http.Request) 
+
+    }
+    class main.Chan << (T, #FF7700) >>  {
+    }
+}
+
+"http.Handler" <|-- "main.Chan"
+"http.Handler" <|-- "main.Counter"
+
+namespace pprof {
+    class handler << (S,Aquamarine) >> {
+        - serveDeltaProfile(w http.ResponseWriter, r *http.Request, p *pprof.Profile, secStr string) 
+
+        + ServeHTTP(w http.ResponseWriter, r *http.Request) 
+
+    }
+    class pprof.handler << (T, #FF7700) >>  {
+    }
+    class profileEntry << (S,Aquamarine) >> {
+        + Name string
+        + Href string
+        + Desc string
+        + Count int
+
+    }
+}
+
+"http.Handler" <|-- "pprof.handler"
+
+"__builtin__.<font color=blue>chan</font> int" #.. "main.Chan"
+"__builtin__.<font color=blue>map</font>[string][]string" #.. "http.Header"
+"__builtin__.[]byte" #.. "http.htmlSig"
+"__builtin__.byte" #.. "httputil.neverEnding"
+"__builtin__.int" #.. "http.ConnState"
+"__builtin__.int" #.. "http.SameSite"
+"__builtin__.int" #.. "http.condResult"
+"__builtin__.int" #.. "http.http2priorityNodeState"
+"__builtin__.int" #.. "http.http2serverMessage"
+"__builtin__.int" #.. "http.http2streamState"
+"__builtin__.int" #.. "http.socksAuthMethod"
+"__builtin__.int" #.. "http.socksCommand"
+"__builtin__.int" #.. "http.socksReply"
+"__builtin__.int32" #.. "http.atomicBool"
+"__builtin__.int64" #.. "http.countingWriter"
+"__builtin__.string" #.. "http.Dir"
+"__builtin__.string" #.. "http.http2duplicatePseudoHeaderError"
+"__builtin__.string" #.. "http.http2headerFieldNameError"
+"__builtin__.string" #.. "http.http2headerFieldValueError"
+"__builtin__.string" #.. "http.http2pseudoHeaderError"
+"__builtin__.string" #.. "pprof.handler"
+"__builtin__.uint16" #.. "http.http2SettingID"
+"__builtin__.uint32" #.. "http.http2ErrCode"
+"__builtin__.uint64" #.. "http.http2goroutineLock"
+"__builtin__.uint8" #.. "fcgi.recType"
+"__builtin__.uint8" #.. "http.http2Flags"
+"__builtin__.uint8" #.. "http.http2FrameType"
+"http.<font color=blue>chan</font> <font color=blue>struct</font>{}" #.. "http.http2closeWaiter"
+"http.<font color=blue>chan</font> <font color=blue>struct</font>{}" #.. "http.http2gate"
+"http.<font color=blue>func</font>(*http2frameCache, http2FrameHeader, <font color=blue>func</font>(string) , []byte) (http2Frame, error)" #.. "http.http2frameParser"
+"http.<font color=blue>func</font>(ResponseWriter, *Request) " #.. "http.HandlerFunc"
+"http.[]*http2priorityNode" #.. "http.http2sortPriorityNodeSiblings"
+"http.[]*http2writeQueue" #.. "http.http2writeQueuePool"
+"http.[]<font color=blue>func</font>() " #.. "http.http2incomparable"
+"http.[]<font color=blue>func</font>() " #.. "http.incomparable"
+"http.fsDirEntry" #.. "http.dirEntryDirs"
+"http.fsFileInfo" #.. "http.fileInfoDirs"
+"http.[]http2Setting" #.. "http.http2writeSettings"
+"http.any" #.. "http.http2WriteScheduler"
+"http.http2ErrCode" #.. "http.http2ConnectionError"
+@enduml

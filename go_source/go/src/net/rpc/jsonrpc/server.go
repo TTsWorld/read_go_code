@@ -23,17 +23,17 @@ type serverCodec struct {
 	req serverRequest
 
 	// JSON-RPC clients can use arbitrary json values as request IDs.
-	// Package rpc expects uint64 request IDs.
+	// Package grpc expects uint64 request IDs.
 	// We assign uint64 sequence numbers to incoming requests
 	// but save the original request ID in the pending map.
-	// When rpc responds, we use the sequence number in
+	// When grpc responds, we use the sequence number in
 	// the response to find the original request ID.
 	mutex   sync.Mutex // protects seq, pending
 	seq     uint64
 	pending map[uint64]*json.RawMessage
 }
 
-// NewServerCodec returns a new rpc.ServerCodec using JSON-RPC on conn.
+// NewServerCodec returns a new grpc.ServerCodec using JSON-RPC on conn.
 func NewServerCodec(conn io.ReadWriteCloser) rpc.ServerCodec {
 	return &serverCodec{
 		dec:     json.NewDecoder(conn),

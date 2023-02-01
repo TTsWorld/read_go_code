@@ -17,7 +17,7 @@ func TestIssue48807(t *testing.T) {
 		dontwant := float32(float64(i))
 		if got == dontwant {
 			// The test cases above should be uint64s such that
-			// this equality doesn't hold. These examples trigger
+			// this equality doesn't hold. These gin_examples trigger
 			// the case where using an intermediate float64 doesn't work.
 			t.Errorf("direct float32 conversion doesn't work: arg=%x got=%x dontwant=%x", i, got, dontwant)
 		}

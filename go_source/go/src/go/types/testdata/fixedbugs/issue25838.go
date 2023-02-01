@@ -4,7 +4,7 @@
 
 package p
 
-// examples from the issue
+// gin_examples from the issue
 
 type (
 	e = f

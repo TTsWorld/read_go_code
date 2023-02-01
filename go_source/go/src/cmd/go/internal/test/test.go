@@ -6,6 +6,18 @@ package test
 
 import (
 	"bytes"
+	"cmd/go/internal/base"
+	"cmd/go/internal/cache"
+	"cmd/go/internal/cfg"
+	"cmd/go/internal/load"
+	"cmd/go/internal/lockedfile"
+	"cmd/go/internal/modload"
+	"cmd/go/internal/search"
+	"cmd/go/internal/str"
+	"cmd/go/internal/trace"
+	"cmd/go/internal/work"
+	"cmd/internal/sys"
+	"cmd/internal/test2json"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -23,19 +35,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"cmd/go/internal/base"
-	"cmd/go/internal/cache"
-	"cmd/go/internal/cfg"
-	"cmd/go/internal/load"
-	"cmd/go/internal/lockedfile"
-	"cmd/go/internal/modload"
-	"cmd/go/internal/search"
-	"cmd/go/internal/str"
-	"cmd/go/internal/trace"
-	"cmd/go/internal/work"
-	"cmd/internal/sys"
-	"cmd/internal/test2json"
 
 	"golang.org/x/mod/module"
 )
@@ -253,7 +252,7 @@ control the execution of any test:
 	    the command line argument must match exactly one package within the
 	    main module, and regexp must match exactly one fuzz test within
 	    that package. Fuzzing will occur after tests, benchmarks, seed corpora
-	    of other fuzz tests, and examples have completed. See the Fuzzing
+	    of other fuzz tests, and gin_examples have completed. See the Fuzzing
 	    section of the testing package documentation for details.
 
 	-fuzztime t
@@ -276,8 +275,8 @@ control the execution of any test:
 	    same information as the -v flag in a machine-readable format.
 
 	-list regexp
-	    List tests, benchmarks, fuzz tests, or examples matching the regular
-	    expression. No tests, benchmarks, fuzz tests, or examples will be run.
+	    List tests, benchmarks, fuzz tests, or gin_examples matching the regular
+	    expression. No tests, benchmarks, fuzz tests, or gin_examples will be run.
 	    This will only list top-level tests. No subtest or subbenchmarks will be
 	    shown.
 
@@ -298,7 +297,7 @@ control the execution of any test:
 	    (see 'go help build').
 
 	-run regexp
-	    Run only those tests, examples, and fuzz tests matching the regular
+	    Run only those tests, gin_examples, and fuzz tests matching the regular
 	    expression. For tests, the regular expression is split by unbracketed
 	    slash (/) characters into a sequence of regular expressions, and each
 	    part of a test's identifier must match the corresponding element in
@@ -482,7 +481,7 @@ A fuzz test is one named FuzzXxx and should have the signature,
 An example function is similar to a test function but, instead of using
 *testing.T to report success or failure, prints output to os.Stdout.
 If the last comment in the function starts with "Output:" then the output
-is compared exactly against the comment (see examples below). If the last
+is compared exactly against the comment (see gin_examples below). If the last
 comment begins with "Unordered output:" then the output is compared to the
 comment, however the order of the lines is ignored. An example with no such
 comment is compiled but not executed. An example with no text after
@@ -490,7 +489,7 @@ comment is compiled but not executed. An example with no text after
 
 Godoc displays the body of ExampleXxx to demonstrate the use
 of the function, constant, or variable Xxx. An example of a method M with
-receiver type T or *T is named ExampleT_M. There may be multiple examples
+receiver type T or *T is named ExampleT_M. There may be multiple gin_examples
 for a given function, constant, or variable, distinguished by a trailing _xxx,
 where xxx is a suffix not beginning with an upper case letter.
 

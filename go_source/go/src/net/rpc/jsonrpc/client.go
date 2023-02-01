@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package jsonrpc implements a JSON-RPC 1.0 ClientCodec and ServerCodec
-// for the rpc package.
+// for the grpc package.
 // For JSON-RPC 2.0 support, see https://godoc.org/?q=json-rpc+2.0
 package jsonrpc
 
@@ -26,14 +26,14 @@ type clientCodec struct {
 	resp clientResponse
 
 	// JSON-RPC responses include the request id but not the request method.
-	// Package rpc expects both.
+	// Package grpc expects both.
 	// We save the request method in pending when sending a request
-	// and then look it up by request ID when filling out the rpc Response.
+	// and then look it up by request ID when filling out the grpc Response.
 	mutex   sync.Mutex        // protects pending
 	pending map[uint64]string // map request id to method name
 }
 
-// NewClientCodec returns a new rpc.ClientCodec using JSON-RPC on conn.
+// NewClientCodec returns a new grpc.ClientCodec using JSON-RPC on conn.
 func NewClientCodec(conn io.ReadWriteCloser) rpc.ClientCodec {
 	return &clientCodec{
 		dec:     json.NewDecoder(conn),
@@ -108,7 +108,7 @@ func (c *clientCodec) Close() error {
 	return c.c.Close()
 }
 
-// NewClient returns a new rpc.Client to handle requests to the
+// NewClient returns a new grpc.Client to handle requests to the
 // set of services at the other end of the connection.
 func NewClient(conn io.ReadWriteCloser) *rpc.Client {
 	return rpc.NewClientWithCodec(NewClientCodec(conn))

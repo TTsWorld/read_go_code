@@ -200,7 +200,7 @@ func Sign(rand io.Reader, priv *PrivateKey, hash []byte) (r, s *big.Int, err err
 	//
 	// The CSPRNG key is indifferentiable from a random oracle as shown in
 	// [Coron], the AES-CTR stream is indifferentiable from a random oracle
-	// under standard cryptographic assumptions (see [Larsson] for examples).
+	// under standard cryptographic assumptions (see [Larsson] for gin_examples).
 	//
 	// [Coron]: https://cs.nyu.edu/~dodis/ps/merkle.pdf
 	// [Larsson]: https://web.archive.org/web/20040719170906/https://www.nada.kth.se/kurser/kth/2D1441/semteo03/lecturenotes/assump.pdf

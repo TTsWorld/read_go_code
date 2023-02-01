@@ -87,7 +87,7 @@ package ir
 //		return do(n)
 //	}
 //
-// Visit and Any are presented above as examples of how to use
+// Visit and Any are presented above as gin_examples of how to use
 // DoChildren effectively, but of course, usage that fits within the
 // simplifications captured by Visit or Any will be best served
 // by directly calling the ones provided by this package.

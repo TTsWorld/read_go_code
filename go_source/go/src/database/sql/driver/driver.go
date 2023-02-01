@@ -480,7 +480,7 @@ type RowsColumnTypeDatabaseTypeName interface {
 // of the column type if the column is a variable length type. If the column is
 // not a variable length type ok should return false.
 // If length is not limited other than system limits, it should return math.MaxInt64.
-// The following are examples of returned values for various types:
+// The following are gin_examples of returned values for various types:
 //   TEXT          (math.MaxInt64, true)
 //   varchar(10)   (10, true)
 //   nvarchar(10)  (10, true)
@@ -503,7 +503,7 @@ type RowsColumnTypeNullable interface {
 
 // RowsColumnTypePrecisionScale may be implemented by Rows. It should return
 // the precision and scale for decimal types. If not applicable, ok should be false.
-// The following are examples of returned values for various types:
+// The following are gin_examples of returned values for various types:
 //   decimal(38, 4)    (38, 4, true)
 //   int               (0, 0, false)
 //   decimal           (math.MaxInt64, math.MaxInt64, true)

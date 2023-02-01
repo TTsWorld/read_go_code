@@ -44,7 +44,7 @@ To list the available checks, run "go tool vet help":
     shift        check for shifts that equal or exceed the width of the integer
     stdmethods   check signature of methods of well-known interfaces
     structtag    check that struct field tags conform to reflect.StructTag.Get
-    tests        check for common mistaken usages of tests and examples
+    tests        check for common mistaken usages of tests and gin_examples
     unmarshal    report passing non-pointer or non-interface values to unmarshal
     unreachable  check for unreachable code
     unsafeptr    check for invalid conversions of uintptr to unsafe.Pointer

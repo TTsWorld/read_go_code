@@ -83,6 +83,12 @@ var (
 // RST_STREAM, depending on the HTTP protocol. To abort a handler so
 // the client sees an interrupted response but the server doesn't log
 // an error, panic with the value ErrAbortHandler.
+// Handler 的行知
+// 1. Handler只能用来读取request的body，而不能修改请求
+// 2.先读取body，然后再写入resp
+// 3.事实上在真正的开发过程中，我们不太会经常使用Handler，因为net/http给我们提供了更方便的HandleFunc()函数，而这个函数可以让我们直接将一个函数作为handler，在这里handler是函数类型而非此Handle接口，这种实现较实现ServeHTTP()来说更加方便。
+//
+// Handler用于处理请求并给予响应，更严格地说，用来读取请求体、并将请求对应的响应字段(respones header)写入ResponseWriter中，然后返回
 type Handler interface {
 	ServeHTTP(ResponseWriter, *Request)
 }
@@ -244,10 +250,12 @@ var (
 	LocalAddrContextKey = &contextKey{"local-addr"}
 )
 
-// A conn represents the server side of an HTTP connection.
+// conn A conn represents the server side of an HTTP connection.
+// conn 表示一个服务端的 http 链接
 type conn struct {
 	// server is the server on which the connection arrived.
 	// Immutable; never nil.
+	// server 是链接到达的服务器，不可变的，一定非空
 	server *Server
 
 	// cancelCtx cancels the connection-level context.
@@ -257,6 +265,9 @@ type conn struct {
 	// This is never wrapped by other types and is the value given out
 	// to CloseNotifier callers. It is usually of type *net.TCPConn or
 	// *tls.Conn.
+	// rwc是底层的网络连接。
+	// 这永远不会被其他类型包装，并且是给 CloseNotifier 调用者给出的值。
+	// 它通常是 *net.TCPConn 类型或 *tls.Conn
 	rwc net.Conn
 
 	// remoteAddr is rwc.RemoteAddr().String(). It is not populated synchronously
@@ -957,16 +968,20 @@ var errTooLarge = errors.New("http: request too large")
 
 // Read next request from connection.
 func (c *conn) readRequest(ctx context.Context) (w *response, err error) {
+	// 链接是否被劫持（意思是不继续执行 http 的逻辑，比如 websocket）
 	if c.hijacked() {
 		return nil, ErrHijacked
 	}
 
 	var (
+		// 整个请求的 dealline
 		wholeReqDeadline time.Time // or zero if none
-		hdrDeadline      time.Time // or zero if none
+		// 读取头的 deadline
+		hdrDeadline time.Time // or zero if none
 	)
 	t0 := time.Now()
 	if d := c.server.readHeaderTimeout(); d > 0 {
+		//是个绝对值
 		hdrDeadline = t0.Add(d)
 	}
 	if d := c.server.ReadTimeout; d > 0 {
@@ -979,14 +994,18 @@ func (c *conn) readRequest(ctx context.Context) (w *response, err error) {
 		}()
 	}
 
+	// 设置读取头的最大头字节数
 	c.r.setReadLimit(c.server.initialReadLimitSize())
 	if c.lastMethod == "POST" {
 		// RFC 7230 section 3 tolerance for old buggy clients.
 		peek, _ := c.bufr.Peek(4) // ReadRequest will get err below
+		//
 		c.bufr.Discard(numLeadingCRorLF(peek))
 	}
+
 	req, err := readRequest(c.bufr)
 	if err != nil {
+		// 达到读数据的上限
 		if c.r.hitReadLimit() {
 			return nil, errTooLarge
 		}
@@ -998,6 +1017,7 @@ func (c *conn) readRequest(ctx context.Context) (w *response, err error) {
 	}
 
 	c.lastMethod = req.Method
+	//重置
 	c.r.setInfiniteReadLimit()
 
 	hosts, haveHost := req.Header["Host"]
@@ -1838,6 +1858,7 @@ func (c *conn) serve(ctx context.Context) {
 		}
 	}()
 
+	// 判断是否是 https 的链接 ; 阅读时可以跳过https部分
 	if tlsConn, ok := c.rwc.(*tls.Conn); ok {
 		tlsTO := c.server.tlsHandshakeTimeout()
 		if tlsTO > 0 {
@@ -1862,6 +1883,7 @@ func (c *conn) serve(ctx context.Context) {
 			c.rwc.SetReadDeadline(time.Time{})
 			c.rwc.SetWriteDeadline(time.Time{})
 		}
+		// 保存 tls 链接状态
 		c.tlsState = new(tls.ConnectionState)
 		*c.tlsState = tlsConn.ConnectionState()
 		if proto := c.tlsState.NegotiatedProtocol; validNextProto(proto) {
@@ -1883,11 +1905,13 @@ func (c *conn) serve(ctx context.Context) {
 	c.cancelCtx = cancelCtx
 	defer cancelCtx()
 
+	//将 conn 封装为一个读链接对象
 	c.r = &connReader{conn: c}
 	c.bufr = newBufioReader(c.r)
 	c.bufw = newBufioWriterSize(checkConnErrorWriter{c}, 4<<10)
 
 	for {
+		// w是 response
 		w, err := c.readRequest(ctx)
 		if c.r.remain != c.server.initialReadLimitSize() {
 			// If we read any bytes off the wire, we're active.
@@ -2077,6 +2101,8 @@ func requestBodyRemains(rc io.ReadCloser) bool {
 // ordinary functions as HTTP handlers. If f is a function
 // with the appropriate signature, HandlerFunc(f) is a
 // Handler that calls f.
+// HandlerFunc 类型是一个适配器，允许使用普通函数作为 HTTP 处理程序
+// 如果 f 是一个函数使用适当的签名，HandlerFunc(f) 是一个调用 f 的 Handler
 type HandlerFunc func(ResponseWriter, *Request)
 
 // ServeHTTP calls f(w, r).
@@ -2234,6 +2260,7 @@ func RedirectHandler(url string, code int) Handler {
 // It matches the URL of each incoming request against a list of registered
 // patterns and calls the handler for the pattern that
 // most closely matches the URL.
+// 它将每个传入请求的 URL 与已注册的列表模式最接近的 URL进行匹配并调用该模式的处理程序
 //
 // Patterns name fixed, rooted paths, like "/favicon.ico",
 // or rooted subtrees, like "/images/" (note the trailing slash).
@@ -2243,10 +2270,15 @@ func RedirectHandler(url string, code int) Handler {
 // called for paths beginning "/images/thumbnails/" and the
 // former will receive requests for any other paths in the
 // "/images/" subtree.
+// 模式名称固定，根路径，如“/favicon.ico”，或有根子树，如“/images/”（注意尾部斜杠）。
+// 较长的模式优先于较短的模式，因此如果两个“/images/”,“/images/thumbnails/”路径都注册了处理程序，
+// 处理程序将调用以“/images/thumbnails/”开头的路径,前者将接收对任何其他"/images/"路径的请求
 //
 // Note that since a pattern ending in a slash names a rooted subtree,
 // the pattern "/" matches all paths not matched by other registered
 // patterns, not just the URL with Path == "/".
+// 请注意，由于以斜杠结尾的模式命名了有根子树，模式“/”匹配所有其他注册的不匹配的路径
+// 模式，而不仅仅是带有 Path == "/" 的 URL。
 //
 // If a subtree has been registered and a request is received naming the
 // subtree root without its trailing slash, ServeMux redirects that
@@ -2255,6 +2287,10 @@ func RedirectHandler(url string, code int) Handler {
 // the trailing slash. For example, registering "/images/" causes ServeMux
 // to redirect a request for "/images" to "/images/", unless "/images" has
 // been registered separately.
+// 如果一个子树已经注册并且接收到一个请求命名没有尾部斜杠的子树根，ServeMux 将其重定向
+// 对子树根的请求（添加尾部斜杠）。这种行为可以使用单独的路径注册覆盖尾部斜线。例如，
+// 注册“/images/”会导致 ServeMux 将对“/images”的请求重定向到“/images/”，除非“/images”有
+// 已单独注册。
 //
 // Patterns may optionally begin with a host name, restricting matches to
 // URLs on that host only. Host-specific patterns take precedence over
@@ -2265,27 +2301,41 @@ func RedirectHandler(url string, code int) Handler {
 // ServeMux also takes care of sanitizing the URL request path and the Host
 // header, stripping the port number and redirecting any request containing . or
 // .. elements or repeated slashes to an equivalent, cleaner URL.
+// ServeMux 还负责清理 URL 请求路径和主机标头，剥离端口号并重定向任何包含 .或者
+// ..元素或重复斜杠到等效的、更清晰的 URL
+
+// 它将每个传入请求的 URL 与已注册的列表模式最接近的 URL进行匹配并调用该模式的处理程序
 type ServeMux struct {
-	mu    sync.RWMutex
-	m     map[string]muxEntry
-	es    []muxEntry // slice of entries sorted from longest to shortest.
-	hosts bool       // whether any patterns contain hostnames
+	mu sync.RWMutex
+	// 路由表
+	// 路由表本质上就是一个map[string]muxEntry变量，键是路径字符串（由method和传入参数拼接字符串组成），
+	// 值是对应的处理结构体muxEntry
+	m map[string]muxEntry
+	// 路由数组 从长到短排序的入口函数切片
+	es []muxEntry // slice of entries sorted from longest to shortest.
+	// 布尔类型的hosts属性标记路由中是否带有主机名，若hosts值为true，则路由的起始不能为/
+	hosts bool // whether any patterns contain hostnames
 }
 
 type muxEntry struct {
-	h       Handler
-	pattern string
+	h       Handler // 处理程序
+	pattern string  // 路由路径
 }
 
 // NewServeMux allocates and returns a new ServeMux.
 func NewServeMux() *ServeMux { return new(ServeMux) }
 
 // DefaultServeMux is the default ServeMux used by Serve.
+// 包级别的变量与声明顺序无关, 所以这里可以先使用 defaultServeMux, 而后声明
 var DefaultServeMux = &defaultServeMux
 
 var defaultServeMux ServeMux
 
 // cleanPath returns the canonical path for p, eliminating . and .. elements.
+// 1.处理无效路由
+//2.对于斜杠的处理，代替无效的多个斜杠
+//3.移除所有的.替换为等效path
+// 简单来说就是对路径进行处理为等效最短路径，使之可以在后续查找路由表的过程中可以查找到相应键值对。
 func cleanPath(p string) string {
 	if p == "" {
 		return "/"
@@ -2308,6 +2358,7 @@ func cleanPath(p string) string {
 }
 
 // stripHostPort returns h without any trailing ":<port>".
+// 对host格式的规范
 func stripHostPort(h string) string {
 	// If no port on host, return unchanged
 	if !strings.Contains(h, ":") {
@@ -2322,6 +2373,7 @@ func stripHostPort(h string) string {
 
 // Find a handler on a handler map given a path string.
 // Most-specific (longest) pattern wins.
+// 在给定路径字符串的处理程序映射上查找处理程序。最具体（最长）的模式获胜。
 func (mux *ServeMux) match(path string) (h Handler, pattern string) {
 	// Check for exact match first.
 	v, ok := mux.m[path]
@@ -2358,6 +2410,11 @@ func (mux *ServeMux) redirectToPathSlash(host, path string, u *url.URL) (*url.UR
 // shouldRedirectRLocked reports whether the given path and host should be redirected to
 // path+"/". This should happen if a handler is registered for path+"/" but
 // not path -- see comments at ServeMux.
+// 判断是否需要对像"/tree/"这种路由的重定向（在ServeMux中对于"/tree"会自动重定向到"/tree/"，除非路由表中已有"/tree"，
+// 此过程在mux.Handler()中调用mux.redirectToPathSlash()完成）
+// 1.判断路由表中是否存在host+path或者path的组合，如果存在则不需要重定向
+// 2.如果path为空字符串，则不需要重定向
+// 3.如果当前路由表中存在path+“/”，则需要重定向（例如在注册时将"/tree/"注册到表中，则对于"/tree"的路由重定向到了"/tree/"，）
 func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
 	p := []string{path, host + path}
 
@@ -2386,18 +2443,26 @@ func (mux *ServeMux) shouldRedirectRLocked(host, path string) bool {
 // handler will be an internally-generated handler that redirects
 // to the canonical path. If the host contains a port, it is ignored
 // when matching handlers.
+// 处理程序返回用于给定请求的处理程序， 处理 r.Method、r.Host 和 r.URL.Path。它总是返回
+//一个非零处理程序。如果路径不是其规范形式，则处理程序将是一个内部生成的处理程序，用于重定向
+//到规范路径。如果主机包含端口，当匹配处理程序时则将其忽略
 //
 // The path and host are used unchanged for CONNECT requests.
+// 对于 CONNECT 请求，路径和主机保持不变
 //
 // Handler also returns the registered pattern that matches the
 // request or, in the case of internally-generated redirects,
 // the pattern that will match after following the redirect.
+// 处理程序还返回匹配的注册模式请求，或者，在内部生成重定向的情况下，
+// 跟随重定向后将匹配的模式
 //
 // If there is no registered handler that applies to the request,
 // Handler returns a ``page not found'' handler and an empty pattern.
+// 如果没有适用于请求的注册处理程序，处理程序返回一个“page not found”处理程序和一个空模式
 func (mux *ServeMux) Handler(r *Request) (h Handler, pattern string) {
 
 	// CONNECT requests are not canonicalized.
+	// CONNECT 请求是不规范的
 	if r.Method == "CONNECT" {
 		// If r.URL.Path is /tree and its handler is not registered,
 		// the /tree -> /tree/ redirect applies to CONNECT requests
@@ -2464,6 +2529,8 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
 
 // Handle registers the handler for the given pattern.
 // If a handler already exists for pattern, Handle panics.
+// Handle 为指定的 pattern 注册handler，如果提供的 pattern 已存在，则 panics
+// 本质是一个写表过程
 func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
@@ -2492,6 +2559,7 @@ func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	}
 }
 
+// 将 e 插入到 es 数组中（插入时会根据 e.pattern 长度排序）
 func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 	n := len(es)
 	i := sort.Search(n, func(i int) bool {
@@ -2501,6 +2569,8 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 		return append(es, e)
 	}
 	// we now know that i points at where we want to insert
+	// Q:为什么手动grow 这个 slice
+	// A: copy调用时，目标切片必须分配过空间且足够承载复制的元素个数，并且来源和目标的类型必须一致
 	es = append(es, muxEntry{}) // try to grow the slice in place, any entry works.
 	copy(es[i+1:], es[i:])      // Move shorter entries down
 	es[i] = e
@@ -2508,6 +2578,11 @@ func appendSorted(es []muxEntry, e muxEntry) []muxEntry {
 }
 
 // HandleFunc registers the handler function for the given pattern.
+// 从函数体来看mux.HandleFunc()算是对mux.Handle()函数的一个再封装，调用了HandlerFunc())这个适配器函数，
+// 本质上是将一个普通函数作为HTTP请求handler的语法糖，我们不再需要实现ServeHTTP()方法，取而代之的是传入的普通函数只要
+// 是func(ResponseWriter, *Request)类型的，就可以进行函数的路由，基本上一行代码就可以搞定，这也是为什么在官网示例中
+// 我们可以轻而易举的构建简单的web程序的原因
+// Golnag 设计模式，适配器模式
 func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 	if handler == nil {
 		panic("http: nil handler")
@@ -2518,11 +2593,14 @@ func (mux *ServeMux) HandleFunc(pattern string, handler func(ResponseWriter, *Re
 // Handle registers the handler for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
+// Handle 在 DefaultServeMux 中为给定模式注册处理函数
 func Handle(pattern string, handler Handler) { DefaultServeMux.Handle(pattern, handler) }
 
 // HandleFunc registers the handler function for the given pattern
 // in the DefaultServeMux.
 // The documentation for ServeMux explains how patterns are matched.
+// HandleFunc 在 DefaultServeMux 中为给定模式注册处理函数。
+// ServeMux 的文档解释了模式是如何匹配的
 func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 	DefaultServeMux.HandleFunc(pattern, handler)
 }
@@ -2569,6 +2647,7 @@ type Server struct {
 	// See net.Dial for details of the address format.
 	Addr string
 
+	//路由
 	Handler Handler // handler to invoke, http.DefaultServeMux if nil
 
 	// TLSConfig optionally provides a TLS configuration for use
@@ -2596,6 +2675,7 @@ type Server struct {
 	// is considered too slow for the body. If ReadHeaderTimeout
 	// is zero, the value of ReadTimeout is used. If both are
 	// zero, there is no timeout.
+	// 读 header 时的超时时间
 	ReadHeaderTimeout time.Duration
 
 	// WriteTimeout is the maximum duration before timing out
@@ -2609,6 +2689,7 @@ type Server struct {
 	// next request when keep-alives are enabled. If IdleTimeout
 	// is zero, the value of ReadTimeout is used. If both are
 	// zero, there is no timeout.
+	// 链接最大空闲时长
 	IdleTimeout time.Duration
 
 	// MaxHeaderBytes controls the maximum number of bytes the
@@ -2632,6 +2713,7 @@ type Server struct {
 	// ConnState specifies an optional callback function that is
 	// called when a client connection changes state. See the
 	// ConnState type and associated constants for details.
+	// 链接状态
 	ConnState func(net.Conn, ConnState)
 
 	// ErrorLog specifies an optional logger for errors accepting
@@ -2646,24 +2728,36 @@ type Server struct {
 	// about to start accepting requests.
 	// If BaseContext is nil, the default is context.Background().
 	// If non-nil, it must return a non-nil context.
+	// BaseContext可选的指定一个 function，用于为当前 server 上接受的请求返回 base context
+	// QAQ:这里为啥要这么封装
 	BaseContext func(net.Listener) context.Context
 
 	// ConnContext optionally specifies a function that modifies
 	// the context used for a new connection c. The provided ctx
 	// is derived from the base context and has a ServerContextKey
 	// value.
+	// ConnContext 可选地指定一个函数来修改用于新连接的上下文 c.提供的ctx
+	// 派生自基本上下文并有一个 ServerContextKey 值。
 	ConnContext func(ctx context.Context, c net.Conn) context.Context
 
+	//标记 server 是否被关闭
 	inShutdown atomicBool // true when server is in shutdown
 
-	disableKeepAlives int32     // accessed atomically.
-	nextProtoOnce     sync.Once // guards setupHTTP2_* init
-	nextProtoErr      error     // result of http2.ConfigureServer if used
+	// 是否启用 keepalive
+	disableKeepAlives int32 // accessed atomically.
+	// HTTP2
+	nextProtoOnce sync.Once // guards setupHTTP2_* init
+	// HTTP2
+	nextProtoErr error // result of http2.ConfigureServer if used
 
-	mu         sync.Mutex
-	listeners  map[*net.Listener]struct{}
+	mu sync.Mutex
+	// 管理监听套接字
+	listeners map[*net.Listener]struct{}
+	// 管理活跃 socket
 	activeConn map[*conn]struct{}
-	doneChan   chan struct{}
+	// 控制上下游关闭资源
+	doneChan chan struct{}
+	//
 	onShutdown []func()
 }
 
@@ -2866,6 +2960,9 @@ const (
 
 	// StateHijacked represents a hijacked connection.
 	// This is a terminal state. It does not transition to StateClosed.
+	// hijacked的意思是 http 请求不再用 http 协议的方式处理，被其他逻辑接管了。
+	// 接管的意思是接管了 HTTP 的 TCP 链接,整个生命周期都将会被划给 hijacker（比如 grpc，websocket）
+	// client 需要手动管理链接的生命周期（关闭，释放等)
 	StateHijacked
 
 	// StateClosed represents a closed connection.
@@ -2953,12 +3050,14 @@ func AllowQuerySemicolons(h Handler) Handler {
 //
 // ListenAndServe always returns a non-nil error. After Shutdown or Close,
 // the returned error is ErrServerClosed.
+// NoNoNum:1.
 func (srv *Server) ListenAndServe() error {
 	if srv.shuttingDown() {
 		return ErrServerClosed
 	}
 	addr := srv.Addr
 	if addr == "" {
+		//会被解析成 localhost,:http会被替换为 80 端口
 		addr = ":http"
 	}
 	ln, err := net.Listen("tcp", addr)
@@ -3007,10 +3106,13 @@ var ErrServerClosed = errors.New("http: Server closed")
 // Serve always returns a non-nil error and closes l.
 // After Shutdown or Close, the returned error is ErrServerClosed.
 func (srv *Server) Serve(l net.Listener) error {
+	// 默认情况下是为空，不会被调用，用于测试时调用
 	if fn := testHookServerServe; fn != nil {
 		fn(srv, l) // call hook with unwrapped listener
 	}
 
+	// QAQQQ:这里为啥要做一次封装？
+	// 为了保证不会被多次调用 close
 	origListener := l
 	l = &onceCloseListener{Listener: l}
 	defer l.Close()
@@ -3019,6 +3121,7 @@ func (srv *Server) Serve(l net.Listener) error {
 		return err
 	}
 
+	// 启用执行跟踪的 listener,追加到 server 的 listener 的 map 中
 	if !srv.trackListener(&l, true) {
 		return ErrServerClosed
 	}
@@ -3032,6 +3135,7 @@ func (srv *Server) Serve(l net.Listener) error {
 		}
 	}
 
+	// server 在接收 http 请求接收出错时 sleep 的时间
 	var tempDelay time.Duration // how long to sleep on accept failure
 
 	ctx := context.WithValue(baseCtx, ServerContextKey, srv)
@@ -3043,13 +3147,14 @@ func (srv *Server) Serve(l net.Listener) error {
 				return ErrServerClosed
 			default:
 			}
+			// 判断错误错误类型是否是网络错误
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				if tempDelay == 0 {
+				if tempDelay == 0 { // 临时延时
 					tempDelay = 5 * time.Millisecond
 				} else {
 					tempDelay *= 2
 				}
-				if max := 1 * time.Second; tempDelay > max {
+				if max := 1 * time.Second; tempDelay > max { // 最大不能超过 1s
 					tempDelay = max
 				}
 				srv.logf("http: Accept error: %v; retrying in %v", err, tempDelay)
@@ -3093,6 +3198,7 @@ func (srv *Server) ServeTLS(l net.Listener, certFile, keyFile string) error {
 	}
 
 	config := cloneTLSConfig(srv.TLSConfig)
+	//设置协议协商的默认值
 	if !strSliceContains(config.NextProtos, "http/1.1") {
 		config.NextProtos = append(config.NextProtos, "http/1.1")
 	}
@@ -3124,13 +3230,16 @@ func (srv *Server) ServeTLS(l net.Listener, certFile, keyFile string) error {
 func (s *Server) trackListener(ln *net.Listener, add bool) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// listener map 尚未创建，则创建
 	if s.listeners == nil {
 		s.listeners = make(map[*net.Listener]struct{})
 	}
 	if add {
+		// server 已经关闭，返回 false
 		if s.shuttingDown() {
 			return false
 		}
+		//否则添加
 		s.listeners[ln] = struct{}{}
 	} else {
 		delete(s.listeners, ln)

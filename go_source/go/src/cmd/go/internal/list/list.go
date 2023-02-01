@@ -8,15 +8,6 @@ package list
 import (
 	"bufio"
 	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"os"
-	"sort"
-	"strings"
-	"text/template"
-
 	"cmd/go/internal/base"
 	"cmd/go/internal/cache"
 	"cmd/go/internal/cfg"
@@ -25,6 +16,14 @@ import (
 	"cmd/go/internal/modload"
 	"cmd/go/internal/str"
 	"cmd/go/internal/work"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"text/template"
 )
 
 var CmdList = &base.Command{
@@ -199,7 +198,7 @@ for a particular test binary is followed by a space and the name of
 the test binary in brackets, as in "math/rand [math/rand.test]"
 or "regexp [sort.test]". The ForTest field is also set to the name
 of the package being tested ("math/rand" or "sort" in the previous
-examples).
+gin_examples).
 
 The Dir, Target, Shlib, Root, ConflictDir, and Export file paths
 are all absolute paths.
