@@ -4,5 +4,12 @@
     <mapping directory="$PROJECT_DIR$/../../go_primer" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../go_tool" vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/chi" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/gf" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/go-micro" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/go-zero" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/httprouter" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/zero-examples" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../../o_code/gin/gin" vcs="Git" />
   </component>
 </project>
