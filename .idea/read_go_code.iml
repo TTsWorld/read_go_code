@@ -11,5 +11,7 @@
     <orderEntry type="module" module-name="gin-base" />
     <orderEntry type="module" module-name="go_course" />
     <orderEntry type="module" module-name="gin" />
+    <orderEntry type="module" module-name="wasm-demo" />
+    <orderEntry type="module" module-name="wasm_http_go" />
   </component>
 </module>

@@ -9,6 +9,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../go_primer/.idea/go_primer.iml" filepath="$PROJECT_DIR$/../../go_primer/.idea/go_primer.iml" />
       <module fileurl="file://$PROJECT_DIR$/../go_tool/.idea/go_tool.iml" filepath="$PROJECT_DIR$/../go_tool/.idea/go_tool.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/read_go_code.iml" filepath="$PROJECT_DIR$/.idea/read_go_code.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../wasm-demo/.idea/wasm-demo.iml" filepath="$PROJECT_DIR$/../wasm-demo/.idea/wasm-demo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../o_code/wasm_http_go/.idea/wasm_http_go.iml" filepath="$PROJECT_DIR$/../../o_code/wasm_http_go/.idea/wasm_http_go.iml" />
     </modules>
   </component>
 </project>
