@@ -13,5 +13,8 @@
     <orderEntry type="module" module-name="gin" />
     <orderEntry type="module" module-name="wasm-demo" />
     <orderEntry type="module" module-name="wasm_http_go" />
+    <orderEntry type="module" module-name="zap" />
+    <orderEntry type="module" module-name="ds" />
+    <orderEntry type="module" module-name="explain-source-code-by-chatgpt" />
   </component>
 </module>

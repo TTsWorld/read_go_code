@@ -9,8 +9,10 @@
     <mapping directory="$PROJECT_DIR$/go-micro" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/go-zero" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/httprouter" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/zap" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/zero-examples" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../wasm-demo" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../../o_code/explain-source-code-by-chatgpt" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../o_code/gin/gin" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../../o_code/wasm_http_go" vcs="Git" />
   </component>

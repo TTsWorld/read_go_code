@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../ds/.idea/ds.iml" filepath="$PROJECT_DIR$/../ds/.idea/ds.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../o_code/explain-source-code-by-chatgpt/.idea/explain-source-code-by-chatgpt.iml" filepath="$PROJECT_DIR$/../../o_code/explain-source-code-by-chatgpt/.idea/explain-source-code-by-chatgpt.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../o_code/gin/gin/.idea/gin.iml" filepath="$PROJECT_DIR$/../../o_code/gin/gin/.idea/gin.iml" />
       <module fileurl="file://$PROJECT_DIR$/../gin-base/.idea/gin-base.iml" filepath="$PROJECT_DIR$/../gin-base/.idea/gin-base.iml" />
       <module fileurl="file://$PROJECT_DIR$/../go_course/.idea/go_course.iml" filepath="$PROJECT_DIR$/../go_course/.idea/go_course.iml" />
@@ -11,6 +13,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/read_go_code.iml" filepath="$PROJECT_DIR$/.idea/read_go_code.iml" />
       <module fileurl="file://$PROJECT_DIR$/../wasm-demo/.idea/wasm-demo.iml" filepath="$PROJECT_DIR$/../wasm-demo/.idea/wasm-demo.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../o_code/wasm_http_go/.idea/wasm_http_go.iml" filepath="$PROJECT_DIR$/../../o_code/wasm_http_go/.idea/wasm_http_go.iml" />
+      <module fileurl="file://$PROJECT_DIR$/zap/.idea/zap.iml" filepath="$PROJECT_DIR$/zap/.idea/zap.iml" />
     </modules>
   </component>
 </project>
