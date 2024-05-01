@@ -6,6 +6,7 @@
       <module fileurl="file://$PROJECT_DIR$/../go_course/.idea/go_course.iml" filepath="$PROJECT_DIR$/../go_course/.idea/go_course.iml" />
       <module fileurl="file://$PROJECT_DIR$/../go_error/.idea/go_error.iml" filepath="$PROJECT_DIR$/../go_error/.idea/go_error.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../go_primer/.idea/go_primer.iml" filepath="$PROJECT_DIR$/../../go_primer/.idea/go_primer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../go_source_comment/.idea/go_source_comment.iml" filepath="$PROJECT_DIR$/../go_source_comment/.idea/go_source_comment.iml" />
       <module fileurl="file://$PROJECT_DIR$/../go_tool/.idea/go_tool.iml" filepath="$PROJECT_DIR$/../go_tool/.idea/go_tool.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/read_go_code.iml" filepath="$PROJECT_DIR$/.idea/read_go_code.iml" />
     </modules>
