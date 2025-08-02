@@ -1,0 +1,550 @@
+// Copyright (c) 2016 Uber Technologies, Inc.
+// 版权归Uber Technologies公司所有
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 特此免费授予任何获得本软件副本的人使用、复制、修改、分发等权利
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+// 上述版权声明和许可声明应包含在软件的所有副本中
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+// 本软件"按原样"提供，不提供任何明示或暗示的保证
+
+package zap // zap包：提供快速、结构化、分级日志记录
+
+import (
+	"fmt" // fmt包：格式化I/O
+
+	"go.uber.org/zap/zapcore" // zapcore包：核心接口和实现
+
+	"go.uber.org/multierr" // multierr包：多重错误处理
+)
+
+const (
+	_oddNumberErrMsg    = "Ignored key without a value."                  // 忽略没有值的键的错误消息
+	_nonStringKeyErrMsg = "Ignored key-value pairs with non-string keys." // 忽略非字符串键的键值对的错误消息
+	_multipleErrMsg     = "Multiple errors without a key."                // 多个没有键的错误的错误消息
+)
+
+// A SugaredLogger wraps the base Logger functionality in a slower, but less
+// verbose, API. Any Logger can be converted to a SugaredLogger with its Sugar
+// method.
+//
+// Unlike the Logger, the SugaredLogger doesn't insist on structured logging.
+// For each log level, it exposes four methods:
+//
+//   - methods named after the log level for log.Print-style logging
+//   - methods ending in "w" for loosely-typed structured logging
+//   - methods ending in "f" for log.Printf-style logging
+//   - methods ending in "ln" for log.Println-style logging
+//
+// For example, the methods for InfoLevel are:
+//
+//	Info(...any)           Print-style logging
+//	Infow(...any)          Structured logging (read as "info with")
+//	Infof(string, ...any)  Printf-style logging
+//	Infoln(...any)         Println-style logging
+//
+// SugaredLogger以较慢但更简洁的API包装基本Logger功能。
+// 任何Logger都可以通过其Sugar方法转换为SugaredLogger。
+//
+// 与Logger不同，SugaredLogger不坚持结构化日志记录。
+// 对于每个日志级别，它暴露四种方法：
+//
+//   - 以日志级别命名的方法，用于log.Print风格的日志记录
+//   - 以"w"结尾的方法，用于松散类型的结构化日志记录
+//   - 以"f"结尾的方法，用于log.Printf风格的日志记录
+//   - 以"ln"结尾的方法，用于log.Println风格的日志记录
+//
+// 例如，InfoLevel的方法有：
+//
+//	Info(...any)           Print风格日志记录
+//	Infow(...any)          结构化日志记录（读作"info with"）
+//	Infof(string, ...any)  Printf风格日志记录
+//	Infoln(...any)         Println风格日志记录
+type SugaredLogger struct {
+	base *Logger // 底层Logger实例
+}
+
+// Desugar unwraps a SugaredLogger, exposing the original Logger. Desugaring
+// is quite inexpensive, so it's reasonable for a single application to use
+// both Loggers and SugaredLoggers, converting between them on the boundaries
+// of performance-sensitive code.
+// Desugar解包SugaredLogger，暴露原始Logger。去糖化成本很低，
+// 因此单个应用程序同时使用Logger和SugaredLogger是合理的，
+// 在性能敏感代码的边界之间进行转换。
+func (s *SugaredLogger) Desugar() *Logger {
+	base := s.base.clone() // 克隆底层logger
+	base.callerSkip -= 2   // 减少调用者跳过数（因为去掉了包装层）
+	return base            // 返回原始logger
+}
+
+// Named adds a sub-scope to the logger's name. See Logger.Named for details.
+// Named向logger的名称添加子作用域。详细信息请参见Logger.Named。
+func (s *SugaredLogger) Named(name string) *SugaredLogger {
+	return &SugaredLogger{base: s.base.Named(name)} // 返回新的SugaredLogger
+}
+
+// WithOptions clones the current SugaredLogger, applies the supplied Options,
+// and returns the result. It's safe to use concurrently.
+// WithOptions克隆当前SugaredLogger，应用提供的Options，
+// 并返回结果。并发使用是安全的。
+func (s *SugaredLogger) WithOptions(opts ...Option) *SugaredLogger {
+	base := s.base.clone()     // 克隆底层logger
+	for _, opt := range opts { // 遍历选项
+		opt.apply(base) // 应用选项
+	}
+	return &SugaredLogger{base: base} // 返回新的SugaredLogger
+}
+
+// With adds a variadic number of fields to the logging context. It accepts a
+// mix of strongly-typed Field objects and loosely-typed key-value pairs. When
+// processing pairs, the first element of the pair is used as the field key
+// and the second as the field value.
+//
+// For example,
+//
+//	 sugaredLogger.With(
+//	   "hello", "world",
+//	   "failure", errors.New("oh no"),
+//	   Stack(),
+//	   "count", 42,
+//	   "user", User{Name: "alice"},
+//	)
+//
+// is the equivalent of
+//
+//	unsugared.With(
+//	  String("hello", "world"),
+//	  String("failure", "oh no"),
+//	  Stack(),
+//	  Int("count", 42),
+//	  Object("user", User{Name: "alice"}),
+//	)
+//
+// Note that the keys in key-value pairs should be strings. In development,
+// passing a non-string key panics. In production, the logger is more
+// forgiving: a separate error is logged, but the key-value pair is skipped
+// and execution continues. Passing an orphaned key triggers similar behavior:
+// panics in development and errors in production.
+// With向日志上下文添加可变数量的字段。它接受强类型Field对象和
+// 松散类型键值对的混合。处理键值对时，第一个元素用作字段键，
+// 第二个元素用作字段值。
+//
+// 例如，
+//
+//	 sugaredLogger.With(
+//	   "hello", "world",
+//	   "failure", errors.New("oh no"),
+//	   Stack(),
+//	   "count", 42,
+//	   "user", User{Name: "alice"},
+//	)
+//
+// 等价于
+//
+//	unsugared.With(
+//	  String("hello", "world"),
+//	  String("failure", "oh no"),
+//	  Stack(),
+//	  Int("count", 42),
+//	  Object("user", User{Name: "alice"}),
+//	)
+//
+// 注意键值对中的键应该是字符串。在开发模式下，传递非字符串键会panic。
+// 在生产模式下，logger更宽容：会记录单独的错误，但跳过键值对并继续执行。
+// 传递孤立键会触发类似行为：开发模式下panic，生产模式下记录错误。
+func (s *SugaredLogger) With(args ...interface{}) *SugaredLogger {
+	return &SugaredLogger{base: s.base.With(s.sweetenFields(args)...)} // 转换参数并创建新的SugaredLogger
+}
+
+// WithLazy adds a variadic number of fields to the logging context lazily.
+// The fields are evaluated only if the logger is further chained with [With]
+// or is written to with any of the log level methods.
+// Until that occurs, the logger may retain references to objects inside the fields,
+// and logging will reflect the state of an object at the time of logging,
+// not the time of WithLazy().
+//
+// Similar to [With], fields added to the child don't affect the parent,
+// and vice versa. Also, the keys in key-value pairs should be strings. In development,
+// passing a non-string key panics, while in production it logs an error and skips the pair.
+// Passing an orphaned key has the same behavior.
+func (s *SugaredLogger) WithLazy(args ...interface{}) *SugaredLogger {
+	return &SugaredLogger{base: s.base.WithLazy(s.sweetenFields(args)...)}
+}
+
+// Level reports the minimum enabled level for this logger.
+//
+// For NopLoggers, this is [zapcore.InvalidLevel].
+func (s *SugaredLogger) Level() zapcore.Level {
+	return zapcore.LevelOf(s.base.core)
+}
+
+// Log logs the provided arguments at provided level.
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Log(lvl zapcore.Level, args ...interface{}) {
+	s.log(lvl, "", args, nil)
+}
+
+// Debug logs the provided arguments at [DebugLevel].
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Debug(args ...interface{}) {
+	s.log(DebugLevel, "", args, nil)
+}
+
+// Info logs the provided arguments at [InfoLevel].
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Info(args ...interface{}) {
+	s.log(InfoLevel, "", args, nil)
+}
+
+// Warn logs the provided arguments at [WarnLevel].
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Warn(args ...interface{}) {
+	s.log(WarnLevel, "", args, nil)
+}
+
+// Error logs the provided arguments at [ErrorLevel].
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Error(args ...interface{}) {
+	s.log(ErrorLevel, "", args, nil)
+}
+
+// DPanic logs the provided arguments at [DPanicLevel].
+// In development, the logger then panics. (See [DPanicLevel] for details.)
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) DPanic(args ...interface{}) {
+	s.log(DPanicLevel, "", args, nil)
+}
+
+// Panic constructs a message with the provided arguments and panics.
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Panic(args ...interface{}) {
+	s.log(PanicLevel, "", args, nil)
+}
+
+// Fatal constructs a message with the provided arguments and calls os.Exit.
+// Spaces are added between arguments when neither is a string.
+func (s *SugaredLogger) Fatal(args ...interface{}) {
+	s.log(FatalLevel, "", args, nil)
+}
+
+// Logf formats the message according to the format specifier
+// and logs it at provided level.
+func (s *SugaredLogger) Logf(lvl zapcore.Level, template string, args ...interface{}) {
+	s.log(lvl, template, args, nil)
+}
+
+// Debugf formats the message according to the format specifier
+// and logs it at [DebugLevel].
+func (s *SugaredLogger) Debugf(template string, args ...interface{}) {
+	s.log(DebugLevel, template, args, nil)
+}
+
+// Infof formats the message according to the format specifier
+// and logs it at [InfoLevel].
+func (s *SugaredLogger) Infof(template string, args ...interface{}) {
+	s.log(InfoLevel, template, args, nil)
+}
+
+// Warnf formats the message according to the format specifier
+// and logs it at [WarnLevel].
+func (s *SugaredLogger) Warnf(template string, args ...interface{}) {
+	s.log(WarnLevel, template, args, nil)
+}
+
+// Errorf formats the message according to the format specifier
+// and logs it at [ErrorLevel].
+func (s *SugaredLogger) Errorf(template string, args ...interface{}) {
+	s.log(ErrorLevel, template, args, nil)
+}
+
+// DPanicf formats the message according to the format specifier
+// and logs it at [DPanicLevel].
+// In development, the logger then panics. (See [DPanicLevel] for details.)
+func (s *SugaredLogger) DPanicf(template string, args ...interface{}) {
+	s.log(DPanicLevel, template, args, nil)
+}
+
+// Panicf formats the message according to the format specifier
+// and panics.
+func (s *SugaredLogger) Panicf(template string, args ...interface{}) {
+	s.log(PanicLevel, template, args, nil)
+}
+
+// Fatalf formats the message according to the format specifier
+// and calls os.Exit.
+func (s *SugaredLogger) Fatalf(template string, args ...interface{}) {
+	s.log(FatalLevel, template, args, nil)
+}
+
+// Logw logs a message with some additional context. The variadic key-value
+// pairs are treated as they are in With.
+func (s *SugaredLogger) Logw(lvl zapcore.Level, msg string, keysAndValues ...interface{}) {
+	s.log(lvl, msg, nil, keysAndValues)
+}
+
+// Debugw logs a message with some additional context. The variadic key-value
+// pairs are treated as they are in With.
+//
+// When debug-level logging is disabled, this is much faster than
+//
+//	s.With(keysAndValues).Debug(msg)
+func (s *SugaredLogger) Debugw(msg string, keysAndValues ...interface{}) {
+	s.log(DebugLevel, msg, nil, keysAndValues)
+}
+
+// Infow logs a message with some additional context. The variadic key-value
+// pairs are treated as they are in With.
+func (s *SugaredLogger) Infow(msg string, keysAndValues ...interface{}) {
+	s.log(InfoLevel, msg, nil, keysAndValues)
+}
+
+// Warnw logs a message with some additional context. The variadic key-value
+// pairs are treated as they are in With.
+func (s *SugaredLogger) Warnw(msg string, keysAndValues ...interface{}) {
+	s.log(WarnLevel, msg, nil, keysAndValues)
+}
+
+// Errorw logs a message with some additional context. The variadic key-value
+// pairs are treated as they are in With.
+func (s *SugaredLogger) Errorw(msg string, keysAndValues ...interface{}) {
+	s.log(ErrorLevel, msg, nil, keysAndValues)
+}
+
+// DPanicw logs a message with some additional context. In development, the
+// logger then panics. (See DPanicLevel for details.) The variadic key-value
+// pairs are treated as they are in With.
+func (s *SugaredLogger) DPanicw(msg string, keysAndValues ...interface{}) {
+	s.log(DPanicLevel, msg, nil, keysAndValues)
+}
+
+// Panicw logs a message with some additional context, then panics. The
+// variadic key-value pairs are treated as they are in With.
+func (s *SugaredLogger) Panicw(msg string, keysAndValues ...interface{}) {
+	s.log(PanicLevel, msg, nil, keysAndValues)
+}
+
+// Fatalw logs a message with some additional context, then calls os.Exit. The
+// variadic key-value pairs are treated as they are in With.
+func (s *SugaredLogger) Fatalw(msg string, keysAndValues ...interface{}) {
+	s.log(FatalLevel, msg, nil, keysAndValues)
+}
+
+// Logln logs a message at provided level.
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Logln(lvl zapcore.Level, args ...interface{}) {
+	s.logln(lvl, args, nil)
+}
+
+// Debugln logs a message at [DebugLevel].
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Debugln(args ...interface{}) {
+	s.logln(DebugLevel, args, nil)
+}
+
+// Infoln logs a message at [InfoLevel].
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Infoln(args ...interface{}) {
+	s.logln(InfoLevel, args, nil)
+}
+
+// Warnln logs a message at [WarnLevel].
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Warnln(args ...interface{}) {
+	s.logln(WarnLevel, args, nil)
+}
+
+// Errorln logs a message at [ErrorLevel].
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Errorln(args ...interface{}) {
+	s.logln(ErrorLevel, args, nil)
+}
+
+// DPanicln logs a message at [DPanicLevel].
+// In development, the logger then panics. (See [DPanicLevel] for details.)
+// Spaces are always added between arguments.
+func (s *SugaredLogger) DPanicln(args ...interface{}) {
+	s.logln(DPanicLevel, args, nil)
+}
+
+// Panicln logs a message at [PanicLevel] and panics.
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Panicln(args ...interface{}) {
+	s.logln(PanicLevel, args, nil)
+}
+
+// Fatalln logs a message at [FatalLevel] and calls os.Exit.
+// Spaces are always added between arguments.
+func (s *SugaredLogger) Fatalln(args ...interface{}) {
+	s.logln(FatalLevel, args, nil)
+}
+
+// Sync flushes any buffered log entries.
+func (s *SugaredLogger) Sync() error {
+	return s.base.Sync()
+}
+
+// log message with Sprint, Sprintf, or neither.
+func (s *SugaredLogger) log(lvl zapcore.Level, template string, fmtArgs []interface{}, context []interface{}) {
+	// If logging at this level is completely disabled, skip the overhead of
+	// string formatting.
+	if lvl < DPanicLevel && !s.base.Core().Enabled(lvl) {
+		return
+	}
+
+	msg := getMessage(template, fmtArgs)
+	if ce := s.base.Check(lvl, msg); ce != nil {
+		ce.Write(s.sweetenFields(context)...)
+	}
+}
+
+// logln message with Sprintln
+func (s *SugaredLogger) logln(lvl zapcore.Level, fmtArgs []interface{}, context []interface{}) {
+	if lvl < DPanicLevel && !s.base.Core().Enabled(lvl) {
+		return
+	}
+
+	msg := getMessageln(fmtArgs)
+	if ce := s.base.Check(lvl, msg); ce != nil {
+		ce.Write(s.sweetenFields(context)...)
+	}
+}
+
+// getMessage format with Sprint, Sprintf, or neither.
+func getMessage(template string, fmtArgs []interface{}) string {
+	if len(fmtArgs) == 0 {
+		return template
+	}
+
+	if template != "" {
+		return fmt.Sprintf(template, fmtArgs...)
+	}
+
+	if len(fmtArgs) == 1 {
+		if str, ok := fmtArgs[0].(string); ok {
+			return str
+		}
+	}
+	return fmt.Sprint(fmtArgs...)
+}
+
+// getMessageln format with Sprintln.
+func getMessageln(fmtArgs []interface{}) string {
+	msg := fmt.Sprintln(fmtArgs...)
+	return msg[:len(msg)-1]
+}
+
+// sweetenFields converts interface{} arguments into structured fields.
+// sweetenFields将interface{}参数转换为结构化字段。
+func (s *SugaredLogger) sweetenFields(args []interface{}) []Field {
+	if len(args) == 0 { // 如果没有参数
+		return nil // 返回nil
+	}
+
+	var (
+		// Allocate enough space for the worst case; if users pass only structured
+		// fields, we shouldn't penalize them with extra allocations.
+		// 为最坏情况分配足够的空间；如果用户只传递结构化字段，
+		// 我们不应该因额外的分配而惩罚他们。
+		fields    = make([]Field, 0, len(args)) // 字段列表
+		invalid   invalidPairs                  // 无效对列表
+		seenError bool                          // 是否已看到错误
+	)
+
+	for i := 0; i < len(args); { // 遍历所有参数
+		// This is a strongly-typed field. Consume it and move on.
+		// 这是一个强类型字段。使用它并继续。
+		if f, ok := args[i].(Field); ok { // 如果是Field类型
+			fields = append(fields, f) // 直接添加
+			i++                        // 移动到下一个
+			continue                   // 继续循环
+		}
+
+		// If it is an error, consume it and move on.
+		// 如果是错误，使用它并继续。
+		if err, ok := args[i].(error); ok { // 如果是error类型
+			if !seenError { // 如果还没看到错误
+				seenError = true                    // 标记已看到错误
+				fields = append(fields, Error(err)) // 添加错误字段
+			} else { // 如果已经有错误了
+				s.base.Error(_multipleErrMsg, Error(err)) // 记录多重错误警告
+			}
+			i++      // 移动到下一个
+			continue // 继续循环
+		}
+
+		// Make sure this element isn't a dangling key.
+		// 确保此元素不是悬空的键。
+		if i == len(args)-1 { // 如果是最后一个元素且没有对应的值
+			s.base.Error(_oddNumberErrMsg, Any("ignored", args[i])) // 记录奇数参数错误
+			break                                                   // 退出循环
+		}
+
+		// Consume this value and the next, treating them as a key-value pair. If the
+		// key isn't a string, add this pair to the slice of invalid pairs.
+		// 使用这个值和下一个值，将它们视为键值对。
+		// 如果键不是字符串，将此对添加到无效对的切片中。
+		key, val := args[i], args[i+1]       // 获取键值对
+		if keyStr, ok := key.(string); !ok { // 如果键不是字符串
+			// Subsequent errors are likely, so allocate once up front.
+			// 后续错误很可能发生，所以提前分配一次。
+			if cap(invalid) == 0 { // 如果还没有分配无效对列表
+				invalid = make(invalidPairs, 0, len(args)/2) // 分配
+			}
+			invalid = append(invalid, invalidPair{i, key, val}) // 添加无效对
+		} else { // 如果键是字符串
+			fields = append(fields, Any(keyStr, val)) // 添加到字段列表
+		}
+		i += 2 // 一次处理两个参数
+	}
+
+	// If we encountered any invalid key-value pairs, log an error.
+	// 如果遇到任何无效的键值对，记录错误。
+	if len(invalid) > 0 { // 如果有无效对
+		s.base.Error(_nonStringKeyErrMsg, Array("invalid", invalid)) // 记录非字符串键错误
+	}
+	return fields // 返回字段列表
+}
+
+// invalidPair represents a key-value pair where the key is not a string.
+// invalidPair表示键不是字符串的键值对。
+type invalidPair struct {
+	position   int         // 在参数列表中的位置
+	key, value interface{} // 键和值
+}
+
+// MarshalLogObject implements zapcore.ObjectMarshaler.
+// MarshalLogObject实现zapcore.ObjectMarshaler接口。
+func (p invalidPair) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddInt64("position", int64(p.position)) // 添加位置
+	Any("key", p.key).AddTo(enc)                // 添加键
+	Any("value", p.value).AddTo(enc)            // 添加值
+	return nil                                  // 返回nil表示成功
+}
+
+// invalidPairs is a slice of invalidPair.
+// invalidPairs是invalidPair的切片。
+type invalidPairs []invalidPair
+
+// MarshalLogArray implements zapcore.ArrayMarshaler.
+// MarshalLogArray实现zapcore.ArrayMarshaler接口。
+func (ps invalidPairs) MarshalLogArray(enc zapcore.ArrayEncoder) error {
+	var err error       // 累积错误
+	for i := range ps { // 遍历所有无效对
+		err = multierr.Append(err, enc.AppendObject(ps[i])) // 添加对象到数组编码器
+	}
+	return err // 返回累积的错误
+}
