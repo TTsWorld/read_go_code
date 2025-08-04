@@ -28,6 +28,7 @@ package zapcore // zapcore包：定义zap日志库的核心低层接口
 // to wrap in a more user-friendly API.
 // Core是一个最小化、高速的日志接口。它设计给库作者使用，
 // 用于封装成更用户友好的API
+// core 接口的三个方法就是 core 接口的主要职责
 type Core interface {
 	LevelEnabler // 嵌入LevelEnabler接口，提供级别启用功能
 

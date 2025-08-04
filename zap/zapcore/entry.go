@@ -36,6 +36,7 @@ import (
 	"go.uber.org/zap/internal/pool"       // 内部对象池
 )
 
+// CheckedEntry对象池，用于复用CheckedEntry对象以提高性能
 var _cePool = pool.New(func() *CheckedEntry { // CheckedEntry对象池
 	// Pre-allocate some space for cores.
 	// 为core预分配一些空间。
@@ -44,12 +45,14 @@ var _cePool = pool.New(func() *CheckedEntry { // CheckedEntry对象池
 	}
 })
 
+// getCheckedEntry 从对象池获取CheckedEntry实例
 func getCheckedEntry() *CheckedEntry { // 从对象池获取CheckedEntry
 	ce := _cePool.Get() // 从池中获取
 	ce.reset()          // 重置状态
 	return ce           // 返回实例
 }
 
+// putCheckedEntry 将CheckedEntry归还到对象池
 func putCheckedEntry(ce *CheckedEntry) { // 将CheckedEntry归还到对象池
 	if ce == nil { // 如果为nil
 		return // 直接返回
@@ -74,6 +77,7 @@ func NewEntryCaller(pc uintptr, file string, line int, ok bool) EntryCaller {
 
 // EntryCaller represents the caller of a logging function.
 // EntryCaller表示日志函数的调用者。
+// EnterCaller存储有关生成日志的代码位置的信息
 type EntryCaller struct {
 	Defined  bool    // 是否已定义
 	PC       uintptr // 程序计数器
@@ -106,6 +110,7 @@ func (ec EntryCaller) FullPath() string {
 
 // TrimmedPath returns a package/file:line description of the caller,
 // preserving only the leaf directory name and file name.
+// TrimmedPath返回调用者的package/file:line描述，只保留叶子目录名和文件名
 func (ec EntryCaller) TrimmedPath() string {
 	if !ec.Defined {
 		return "undefined"
@@ -123,17 +128,23 @@ func (ec EntryCaller) TrimmedPath() string {
 	//
 	// Find the last separator.
 	//
+	// 注意：为了确保在Windows上也能正确修剪路径，我们需要使用'/'而不是os.PathSeparator，
+	// 因为路径来自Go标准库，特别是runtime.Caller()（截至2017年3月）即使在Windows上也返回正斜杠。
+	//
+	// 查找最后一个分隔符
 	idx := strings.LastIndexByte(ec.File, '/')
 	if idx == -1 {
 		return ec.FullPath()
 	}
 	// Find the penultimate separator.
+	// 查找倒数第二个分隔符
 	idx = strings.LastIndexByte(ec.File[:idx], '/')
 	if idx == -1 {
 		return ec.FullPath()
 	}
 	buf := bufferpool.Get()
 	// Keep everything after the penultimate separator.
+	// 保留倒数第二个分隔符之后的所有内容
 	buf.AppendString(ec.File[idx+1:])
 	buf.AppendByte(':')
 	buf.AppendInt(int64(ec.Line))
@@ -149,13 +160,19 @@ func (ec EntryCaller) TrimmedPath() string {
 //
 // Entries are pooled, so any functions that accept them MUST be careful not to
 // retain references to them.
+// Entry表示一个完整的日志消息。条目的结构化上下文已经序列化，
+// 但日志级别、时间、消息和调用位置信息可用于检查和修改。
+// 编码时会省略任何留空的字段。
+//
+// Entry是池化的，所以任何接受它们的函数必须小心不要保留对它们的引用。
+// ENtry 包含用于日志消息的元数据（级别，时间，消息等）
 type Entry struct {
-	Level      Level
-	Time       time.Time
-	LoggerName string
-	Message    string
-	Caller     EntryCaller
-	Stack      string
+	Level      Level       // 日志级别
+	Time       time.Time   // 时间戳
+	LoggerName string      // 日志器名称
+	Message    string      // 日志消息
+	Caller     EntryCaller // 调用者信息
+	Stack      string      // 堆栈信息
 }
 
 // CheckWriteHook is a custom action that may be executed after an entry is
@@ -170,44 +187,60 @@ type Entry struct {
 //
 // You can configure the hook for Fatal log statements at the logger level with
 // the zap.WithFatalHook option.
+// CheckWriteHook是在条目写入后可能执行的自定义操作。
+//
+// 使用After方法在CheckedEntry上注册一个钩子。
+//
+// 您可以使用zap.WithFatalHook选项在日志器级别为Fatal日志语句配置钩子。
 type CheckWriteHook interface {
 	// OnWrite is invoked with the CheckedEntry that was written and a list
 	// of fields added with that entry.
 	//
 	// The list of fields DOES NOT include fields that were already added
 	// to the logger with the With method.
+	// OnWrite在写入CheckedEntry时被调用，并传入与该条目一起添加的字段列表。
+	//
+	// 字段列表不包括已经使用With方法添加到日志器的字段。
 	OnWrite(*CheckedEntry, []Field)
 }
 
 // CheckWriteAction indicates what action to take after a log entry is
 // processed. Actions are ordered in increasing severity.
+// CheckWriteAction指示在处理日志条目后要采取的操作。操作按严重性递增排序。
 type CheckWriteAction uint8
 
 const (
 	// WriteThenNoop indicates that nothing special needs to be done. It's the
 	// default behavior.
+	// WriteThenNoop表示不需要做任何特殊操作。这是默认行为。
 	WriteThenNoop CheckWriteAction = iota
 	// WriteThenGoexit runs runtime.Goexit after Write.
+	// WriteThenGoexit在Write后运行runtime.Goexit。
 	WriteThenGoexit
 	// WriteThenPanic causes a panic after Write.
+	// WriteThenPanic在Write后触发panic。
 	WriteThenPanic
 	// WriteThenFatal causes an os.Exit(1) after Write.
+	// WriteThenFatal在Write后调用os.Exit(1)。
 	WriteThenFatal
 )
 
 // OnWrite implements the OnWrite method to keep CheckWriteAction compatible
 // with the new CheckWriteHook interface which deprecates CheckWriteAction.
+// OnWrite实现OnWrite方法以保持CheckWriteAction与新的CheckWriteHook接口兼容，
+// 该接口已弃用CheckWriteAction。
 func (a CheckWriteAction) OnWrite(ce *CheckedEntry, _ []Field) {
 	switch a {
 	case WriteThenGoexit:
-		runtime.Goexit()
+		runtime.Goexit() // 退出当前goroutine
 	case WriteThenPanic:
-		panic(ce.Message)
+		panic(ce.Message) // 触发panic
 	case WriteThenFatal:
-		exit.With(1)
+		exit.With(1) // 退出程序
 	}
 }
 
+// 确保CheckWriteAction实现了CheckWriteHook接口
 var _ CheckWriteHook = CheckWriteAction(0)
 
 // CheckedEntry is an Entry together with a collection of Cores that have
@@ -216,29 +249,38 @@ var _ CheckWriteHook = CheckWriteAction(0)
 // CheckedEntry references should be created by calling AddCore or After on a
 // nil *CheckedEntry. References are returned to a pool after Write, and MUST
 // NOT be retained after calling their Write method.
+// CheckedEntry是一个Entry和已经同意记录它的Core集合的组合。
+//
+// CheckedEntry引用应该通过在nil *CheckedEntry上调用AddCore或After来创建。
+// 引用在Write后返回到池中，在调用其Write方法后绝不能保留。
+// checkedentry是一种汇总资源，只有在需要编写日志时才会分配
 type CheckedEntry struct {
-	Entry
-	ErrorOutput WriteSyncer
-	dirty       bool // best-effort detection of pool misuse
-	after       CheckWriteHook
-	cores       []Core
+	Entry                      // 嵌入Entry结构体
+	ErrorOutput WriteSyncer    // 错误输出
+	dirty       bool           // 尽力检测池误用的标志
+	after       CheckWriteHook // 写入后的钩子
+	cores       []Core         // Core集合
 }
 
+// reset 重置CheckedEntry到初始状态
 func (ce *CheckedEntry) reset() {
-	ce.Entry = Entry{}
-	ce.ErrorOutput = nil
-	ce.dirty = false
-	ce.after = nil
+	ce.Entry = Entry{}   // 重置Entry
+	ce.ErrorOutput = nil // 清空错误输出
+	ce.dirty = false     // 重置dirty标志
+	ce.after = nil       // 清空钩子
 	for i := range ce.cores {
 		// don't keep references to cores
+		// 不保留对cores的引用
 		ce.cores[i] = nil
 	}
-	ce.cores = ce.cores[:0]
+	ce.cores = ce.cores[:0] // 清空cores切片
 }
 
 // Write writes the entry to the stored Cores, returns any errors, and returns
 // the CheckedEntry reference to a pool for immediate re-use. Finally, it
 // executes any required CheckWriteAction.
+// Write将条目写入存储的Cores，返回任何错误，并将CheckedEntry引用返回到池中以便立即重用。
+// 最后，它执行任何必需的CheckWriteAction。
 func (ce *CheckedEntry) Write(fields ...Field) {
 	if ce == nil {
 		return
@@ -250,6 +292,9 @@ func (ce *CheckedEntry) Write(fields ...Field) {
 			// If the entry is dirty, log an internal error; because the
 			// CheckedEntry is being used after it was returned to the pool,
 			// the message may be an amalgamation from multiple call sites.
+			// 尽力检测这个CheckedEntry的不安全重用。
+			// 如果条目是脏的，记录内部错误；因为CheckedEntry在返回到池后被使用，
+			// 消息可能是来自多个调用点的混合。
 			_, _ = fmt.Fprintf(
 				ce.ErrorOutput,
 				"%v Unsafe CheckedEntry re-use near Entry %+v.\n",
@@ -286,6 +331,8 @@ func (ce *CheckedEntry) Write(fields ...Field) {
 // AddCore adds a Core that has agreed to log this CheckedEntry. It's intended to be
 // used by Core.Check implementations, and is safe to call on nil CheckedEntry
 // references.
+// AddCore添加一个已经同意记录这个CheckedEntry的Core。它旨在被Core.Check实现使用，
+// 在nil CheckedEntry引用上调用是安全的。
 func (ce *CheckedEntry) AddCore(ent Entry, core Core) *CheckedEntry {
 	if ce == nil {
 		ce = getCheckedEntry()
@@ -300,6 +347,10 @@ func (ce *CheckedEntry) AddCore(ent Entry, core Core) *CheckedEntry {
 // safe to call on nil CheckedEntry references.
 //
 // Deprecated: Use [CheckedEntry.After] instead.
+// Should设置这个CheckedEntry的CheckWriteAction，它控制Core在写入此日志条目后是否会panic或fatal。
+// 像AddCore一样，在nil CheckedEntry引用上调用是安全的。
+//
+// 已弃用：请使用[CheckedEntry.After]代替。
 func (ce *CheckedEntry) Should(ent Entry, should CheckWriteAction) *CheckedEntry {
 	return ce.After(ent, should)
 }
@@ -307,6 +358,8 @@ func (ce *CheckedEntry) Should(ent Entry, should CheckWriteAction) *CheckedEntry
 // After sets this CheckEntry's CheckWriteHook, which will be called after this
 // log entry has been written. It's safe to call this on nil CheckedEntry
 // references.
+// After设置这个CheckEntry的CheckWriteHook，它将在写入此日志条目后被调用。
+// 在nil CheckedEntry引用上调用是安全的。
 func (ce *CheckedEntry) After(ent Entry, hook CheckWriteHook) *CheckedEntry {
 	if ce == nil {
 		ce = getCheckedEntry()
