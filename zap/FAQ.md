@@ -122,9 +122,6 @@ get -u go.uber.org/zap`, and always import it in your code with `import
 Zap doesn't natively support rotating log files, since we prefer to leave this
 to an external program like `logrotate`.
 
-However, it's easy to integrate a log rotation package like
-[`gopkg.in/natefinch/lumberjack.v2`][lumberjack] as a `zapcore.WriteSyncer`.
-
 ```go
 // lumberjack.Logger is already safe for concurrent use, so we don't need to
 // lock it.
