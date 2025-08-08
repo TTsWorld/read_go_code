@@ -1,5 +1,15 @@
+// 文件功能: REST 引擎的内部实现，负责路由绑定、特性链(Chain)构建、超时/CORS/SSE/优雅退出等细节管理。
+// 关键技术点:
+// - 中间件链构建: 根据全局与路由特性自动拼接 Trace/Log/Prometheus/MaxConns/Breaker/Shedding/Timeout/Recover/Metrics/MaxBytes/Gunzip 等。
+// - 自适应负载剪枝: 基于 CPU 阈值构建普通与优先 Shedder，缓解过载。
+// - 网络超时: 依据所有路由中的最大 timeout 设置 http.Server 的读/写超时。
+// - 404 定制: 使用独立 Chain 包裹自定义或默认的 404 响应。
+// - 签名校验: 基于 RSA 私钥集合与可选 Strict 模式验证请求。
+// - SSE 支持: 移除写超时并设置特定头，满足服务端推送长连接。
+// 适用场景: 作为 `rest.Server` 的执行核心，完成服务启动与请求管线构造。
 package rest
 
+// 导入依赖包列表
 import (
 	"crypto/tls"
 	"errors"

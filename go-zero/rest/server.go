@@ -1,12 +1,26 @@
+// 文件功能: 定义 REST 服务器的构建、路由注册、启动与中间件装配，支持 CORS、静态文件、JWT、签名校验、SSE、超时等特性。
+// 关键技术点:
+// - 组合模式: `Server` 内部持有 `engine` 与 `router`，职责分离。
+// - 选项模式(RunOption/RouteOption): 通过函数式选项定制运行期行为与路由特性。
+// - 可插拔中间件链: 使用 `chain.Chain` 与 `Use` 方法灵活扩展。
+// - CORS/静态文件包装: 通过自定义 `httpx.Router` 包装器透明增强。
+// - 优雅退出: 默认启用，异常使用统一的 `handleError` 兜底处理。
+// - TLS 支持: 通过 `WithTLSConfig` 注入自定义 TLS 配置。
+// - 非侵入 API: 大量 `With*` 助手函数降低接入成本。
+// 适用场景: 快速落地具备治理能力的 HTTP 服务。
+// 包声明: 当前文件属于 `rest` 包，暴露对外的 REST Server API。
 package rest
 
+// 导入依赖包列表
 import (
+	// TLS、错误类型、HTTP、路径处理、时间
 	"crypto/tls"
 	"errors"
 	"net/http"
 	"path"
 	"time"
 
+	// go-zero 核心与子系统能力
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/chain"
 	"github.com/zeromicro/go-zero/rest/handler"
@@ -19,12 +33,15 @@ import (
 
 type (
 	// RunOption defines the method to customize a Server.
+	// 运行期选项：用于调整 `Server` 的整体行为
 	RunOption func(*Server)
 
 	// StartOption defines the method to customize http server.
+	// 启动选项：用于调整底层 HTTP 服务器行为（端口、超时、优雅退出等）
 	StartOption = internal.StartOption
 
 	// A Server is a http server.
+	// 对外的 REST 服务器抽象，持有引擎与路由器
 	Server struct {
 		ngin   *engine
 		router httpx.Router
@@ -35,6 +52,7 @@ type (
 // Be aware that later RunOption might overwrite previous one that write the same option.
 // The process will exit if error occurs.
 func MustNewServer(c RestConf, opts ...RunOption) *Server {
+	// 构建服务端，如出错则立即 panic 暴露问题
 	server, err := NewServer(c, opts...)
 	if err != nil {
 		logx.Must(err)
@@ -46,6 +64,7 @@ func MustNewServer(c RestConf, opts ...RunOption) *Server {
 // NewServer returns a server with given config of c and options defined in opts.
 // Be aware that later RunOption might overwrite previous one that write the same option.
 func NewServer(c RestConf, opts ...RunOption) (*Server, error) {
+	// 配置落地（如日志、验证器、限流器等初始化）
 	if err := c.SetUp(); err != nil {
 		return nil, err
 	}
@@ -55,8 +74,10 @@ func NewServer(c RestConf, opts ...RunOption) (*Server, error) {
 		router: router.NewRouter(),
 	}
 
+	// 默认安装 404 处理器，调用方可覆盖
 	opts = append([]RunOption{WithNotFoundHandler(nil)}, opts...)
 	for _, opt := range opts {
+		// 应用 RunOption，后定义的选项可覆盖先前设置
 		opt(server)
 	}
 
@@ -65,6 +86,7 @@ func NewServer(c RestConf, opts ...RunOption) (*Server, error) {
 
 // AddRoute adds given route into the Server.
 func (s *Server) AddRoute(r Route, opts ...RouteOption) {
+	// 复用批量添加函数，统一行为
 	s.AddRoutes([]Route{r}, opts...)
 }
 
@@ -76,6 +98,7 @@ func (s *Server) AddRoutes(rs []Route, opts ...RouteOption) {
 	for _, opt := range opts {
 		opt(&r)
 	}
+	// 将带特性的路由交给引擎统一管理
 	s.ngin.addRoutes(r)
 }
 
@@ -86,6 +109,7 @@ func (s *Server) PrintRoutes() {
 
 // Routes returns the HTTP routers that registered in the server.
 func (s *Server) Routes() []Route {
+	// 从引擎内部聚合出所有已注册的原始路由
 	routes := make([]Route, 0, len(s.ngin.routes))
 
 	for _, r := range s.ngin.routes {
@@ -99,6 +123,7 @@ func (s *Server) Routes() []Route {
 // Graceful shutdown is enabled by default.
 // Use proc.SetTimeToForceQuit to customize the graceful shutdown period.
 func (s *Server) Start() {
+	// 启动引擎并绑定当前路由器，统一错误处理
 	handleError(s.ngin.start(s.router))
 }
 
@@ -106,31 +131,37 @@ func (s *Server) Start() {
 // Graceful shutdown is enabled by default.
 // Use proc.SetTimeToForceQuit to customize the graceful shutdown period.
 func (s *Server) StartWithOpts(opts ...StartOption) {
+	// 允许按需传入底层 HTTP 服务器的启动选项
 	handleError(s.ngin.start(s.router, opts...))
 }
 
 // Stop stops the Server.
 func (s *Server) Stop() {
+	// 关闭日志与资源，配合优雅退出
 	logx.Close()
 }
 
 // Use adds the given middleware in the Server.
 func (s *Server) Use(middleware Middleware) {
+	// 将中间件追加到引擎链路中
 	s.ngin.use(middleware)
 }
 
 // build builds the Server and binds the routes to the router.
 func (s *Server) build() error {
+	// 将引擎中的路由与中间件绑定到路由器
 	return s.ngin.bindRoutes(s.router)
 }
 
 // serve serves the HTTP requests using the Server's router.
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	// 直接交给路由器处理
 	s.router.ServeHTTP(w, r)
 }
 
 // ToMiddleware converts the given handler to a Middleware.
 func ToMiddleware(handler func(next http.Handler) http.Handler) Middleware {
+	// 适配器: 将 `func(http.Handler) http.Handler` 转换为框架统一的 `Middleware` 类型
 	return func(handle http.HandlerFunc) http.HandlerFunc {
 		return handler(handle).ServeHTTP
 	}

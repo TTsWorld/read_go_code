@@ -1,5 +1,14 @@
+// 文件功能: 提供通用的熔断器接口与默认实现，封装请求放行/拒绝、回退(fallback)、可接受错误(acceptable)等策略，并记录错误窗口用于观测。
+// 关键技术点:
+// - 熔断接口: 定义 Allow/Do/DoWithFallback/DoWithAcceptable 等常用模式。
+// - 上下文支持: 提供 *Ctx 变体，可在 ctx 取消时快速返回。
+// - 错误窗口: 记录近期错误原因，熔断打开时上报，便于排查。
+// - 组合策略: 通过 `throttle` 内部接口与 `googleBreaker` 算法实现实际判定逻辑。
+// - 观测上报: 熔断打开时上报到 stat 系统，包含进程与服务名信息。
+// 适用场景: 高并发服务调用下的过载保护与自愈。
 package breaker
 
+// 导入依赖包列表
 import (
 	"context"
 	"errors"

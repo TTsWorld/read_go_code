@@ -1,5 +1,14 @@
+// 文件功能: 定义 API 网关服务，将 HTTP 路由转发到后端 gRPC 或 HTTP 上游，支持动态反射 gRPC 描述、请求头透传、超时设置与中间件链。
+// 关键技术点:
+// - gRPC 反射: 使用 grpcurl 与 grpcreflect 动态获取服务/方法，自动生成 REST 路由或自定义映射。
+// - 多上游: 同时支持 gRPC 与 HTTP 上游，按配置生成路由与处理函数。
+// - 中间件链: `WithMiddleware` 支持洋葱模型顺序执行。
+// - 连接管理: 统一维护 gRPC 连接并在停止时优雅关闭。
+// - 头部处理: 请求头处理为 RPC Metadata，支持自定义处理函数。
+// 适用场景: 快速构建统一入口的网关服务。
 package gateway
 
+// 导入依赖包列表
 import (
 	"context"
 	"fmt"
