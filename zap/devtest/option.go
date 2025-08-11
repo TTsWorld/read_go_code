@@ -7,9 +7,6 @@ import (
 type Option struct {
 	//zap
 	AppName           string        //日志文件前缀
-	ErrorFileName     string        // error 级别日志文件名
-	WarnFileName      string        // error 级别日志文件名
-	NormalFileName    string        // 非 error 级别日志文件名
 	Level             zapcore.Level //日志等级
 	Development       bool          //是否是开发模式
 	Encoding          string        // 日志编码, required
@@ -136,23 +133,6 @@ func WithAppName(appName string) LogOption {
 	}
 }
 
-func WithErrorFileName(errorFileName string) LogOption {
-	return func(opts *Option) {
-		opts.ErrorFileName = errorFileName
-	}
-}
-
-func WithWarnFileName(warnFileName string) LogOption {
-	return func(opts *Option) {
-		opts.WarnFileName = warnFileName
-	}
-}
-
-func WithNormalFileName(normalFileName string) LogOption {
-	return func(opts *Option) {
-		opts.NormalFileName = normalFileName
-	}
-}
 func WithDebug(debug bool) LogOption {
 	return func(opts *Option) {
 		opts.Debug = debug
