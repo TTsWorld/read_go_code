@@ -22,8 +22,6 @@ func TestZapDevelopment(t *testing.T) {
 	logger.Info("info")
 	logger.Warn("warn")   // warn 会打印堆栈信息
 	logger.Error("error") // error 会打印堆栈信息
-	logger.Fatal("fatal") // fatal 会直接os.Exit(1)
-	logger.Panic("panic") // panic 会直接panic
 }
 
 // 控制台输出到stderr，debuglevel及以上，包括时间戳和caller信息
@@ -33,8 +31,6 @@ func TestZapProduction(t *testing.T) {
 	logger.Info("info")
 	logger.Warn("warn")   // warn 不会打印堆栈
 	logger.Error("error") // error 会打印堆栈信息
-	logger.Fatal("fatal") // fatal 会直接os.Exit(1)
-	logger.Panic("panic") // panic 会直接panic
 }
 
 // JSON输出到Stdout，可用于示例和测试
@@ -46,6 +42,4 @@ func TestZapExample(t *testing.T) {
 	logger.Debug("debug")
 	logger.Warn("warn")
 	logger.Error("error")
-	logger.Fatal("fatal")
-	logger.Panic("panic")
 }

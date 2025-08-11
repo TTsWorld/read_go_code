@@ -1,16 +1,14 @@
 package log
 
 import (
-	"fmt"
-	"io"
+	"os"
 	"testing"
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/petermattis/goid"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 // 测试zap 的 ProductionConfig 配置
@@ -27,8 +25,6 @@ func TestZapProductionConfig(t *testing.T) {
 	logger.Debug("debug")
 	logger.Warn("warn")
 	logger.Error("error")
-	logger.Fatal("fatal")
-	logger.Panic("panic")
 }
 
 // 测试zap 的各种配置参数，看看如何影响日志输出
@@ -48,9 +44,6 @@ func TestConfigCustom(t *testing.T) {
 		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 		EncodeName:     zapcore.FullNameEncoder,
-		NewReflectedEncoder: func(io.Writer) zapcore.ReflectedEncoder {
-			panic("TODO")
-		},
 	}
 	config := zap.Config{
 		Level:             zap.NewAtomicLevelAt(zap.InfoLevel),
@@ -94,7 +87,7 @@ func getZapEncoder(opt Option) zapcore.Encoder {
 	}
 	config.EncodeLevel = zapcore.CapitalLevelEncoder
 	config.EncodeCaller = func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
-		enc.AppendString(fmt.Sprintf("[%d]%s", goid.Get(), caller.TrimmedPath()))
+		enc.AppendString(caller.TrimmedPath())
 	}
 	if opt.Encoding == "json" {
 		return zapcore.NewJSONEncoder(config)
@@ -117,6 +110,9 @@ func getLumberJackWriteSyncer(opt Option) zapcore.WriteSyncer {
 // lumberjack 按时间压缩有问题，所以使用file-rotatelogs来按时间压缩
 // 按时间压缩的某些场景比如 data log 等需要按天统计，所以使用file-rotatelogs更合适
 func getFileRotateWriteSyncer(opt Option) zapcore.WriteSyncer {
+	if opt.FileName == "" {
+		return zapcore.AddSync(os.Stdout)
+	}
 	logs, err := rotatelogs.New(
 		opt.FileName,
 		rotatelogs.WithLinkName(opt.FileName),
