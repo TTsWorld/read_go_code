@@ -102,7 +102,7 @@ func TestConfigCustom2(t *testing.T) {
 
 func main() {
 	logger := NewLogger(
-	// WithDebug(false),
+	WithDebug(false),
 	// WithEncoding("json"),
 	// WithAppName("read_go_code"),
 	// WithDir("logs"),
